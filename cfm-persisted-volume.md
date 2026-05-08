@@ -1,6 +1,6 @@
 **Add Persistent Volumes for NiFi Flows with the CFM Operator**
 
-Your goal is to ensure that any flows you build/deploy directly in the NiFi UI survive pod restarts, rolling updates, scaling operations, or node failures. This is exactly what the `data` directory persistence does in the CFM Operator’s `NifiPersistenceSpec`.
+Ensure that any flows you build/deploy directly in the NiFi UI survive pod restarts, rolling updates, scaling operations, or node failures. This is exactly what the `data` directory persistence does in the CFM Operator’s `NifiPersistenceSpec`.
 
 ### Why This Is Needed
 - The **data directory** (`/opt/nifi/data` inside the container, configurable via NiFi properties) stores:
@@ -9,7 +9,6 @@ Your goal is to ensure that any flows you build/deploy directly in the NiFi UI s
 - The base/evaluation NiFi CRs (e.g., the pattern you reference in `nifi-cluster-30-nifi2x-python.yaml` or similar CSO examples) typically omit full persistence or only use ephemeral storage for simplicity. This causes flow loss on StatefulSet re-rolls.
 - The CFM Operator already knows how to create/manage PVCs via `volumeClaimTemplates` in the underlying StatefulSet. You just need to declare the storage in the NiFi CR under `spec.persistence`.
 - Other repos (`flowfileRepo`, `contentRepo`, `provenanceRepo`, `state`) can (and should) also be persisted for full durability, but **the `data` key is what directly solves your “flows persisted after re-roll” requirement**.
-- This matches exactly what you’ve already done for Schema Registry and SSB (same operator pattern, same StorageClass approach).
 
 **Important Notes Before Starting**
 - StorageClass must support **ReadWriteOnce (RWO)** for `data`, `state`, `flowfileRepo`, etc. (most cloud/local provisioners like `gp3`, `standard`, `longhorn`, `openebs`, etc. do this). NAR providers need RWX, but flows do not.
@@ -26,9 +25,9 @@ Your goal is to ensure that any flows you build/deploy directly in the NiFi UI s
    kubectl get storageclass
    kubectl describe storageclass <your-storageclass-name>
    ```
-   - Look for `provisioner` and `volumeBindingMode: WaitForFirstConsumer` (recommended to avoid scheduling issues).
+   - Look for `provisioner` in this example `k8s.io/minikube-hostpath` (yours may be different)
    - If you need a new one, create `nifi-storage-class.yaml` :
-
+   
 ```bash
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -40,7 +39,7 @@ volumeBindingMode: Immediate
 allowVolumeExpansion: true
 ```
 
-apply the yaml:
+   - apply the yaml:
 
 ```bash
 kubectl apply -f nifi-storage-class.yaml
