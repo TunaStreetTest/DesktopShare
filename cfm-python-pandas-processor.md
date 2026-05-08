@@ -115,7 +115,7 @@ class PandasJSONTransformer(FlowFileTransform):
             )
 ```
 
-**Step 2: Deploy & Activate (Live Environment)**  
+**Step 2: Deploy & Activate**  
 
 Ensure the minikube mount is still running:  
 ```bash
@@ -127,17 +127,17 @@ NiFi 2.0 automatically detects new/updated `.py` files in the extensions directo
 
 - Open NiFi canvas.  
 - Drag a new processor and search for **PandasJSONTransformer**.  
-- Thew new processor should with the exact description and version from the code.  
+- The new processor should appear with the exact description and version from the code.  
 - Simple test flow:  
   `TransactionGenerator` → `PandasJSONTransformer`.   [Flow Definition File](https://raw.githubusercontent.com/cldr-steven-matison/NiFi-Templates/refs/heads/main/CustomPythonProcessorWithPandas.json).
 - Run the flow.  
-- Check output for the new columns `dist_from_home` and `pandas_processed`.
+- Check output flowfile for the new columns `dist_from_home` and `pandas_processed`.
 
-Be patient, when the processor is first introduced to the canvas it will indicate dependencies are downloading.  The processor will be in this state before allowing you to route Success/Failure.
+Be patient on first processor attempt after dragging it to the canvas.  The processor will indicate dependencies are downloading when it is first introduced to the canvas.  The processor must complete this dependency state before allowing you to route Success/Failure.
 
 **Step 4: Hand-Off Framework for Any Other Environment**  
 
-To replicate this exact processor in a different CFM environment:  
+To replicate this exact processor in a different NiFi 2.0 environment:  
 1. Place `PandasJSONTransformer.py` in the Python extensions path.  
 2. Complete the Deployment Steps 1–3 above.  
 3. Verify pandas are installed by NiFi.  
