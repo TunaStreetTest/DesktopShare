@@ -95,7 +95,7 @@ Add **4 Time Series** panels (or Graph if you prefer classic look).
 - Title: `Flink/SSB Processing Rate (cld-streaming)`  
 - Query A:  
   ```promql
-  sum(flink_taskmanager_job_task_operator_numRecordsInPerSecond{namespace="cld-streaming", job_name=~"fraud.*|ssb.*"}) by (job_name)
+  sum(rate(flink_taskmanager_job_task_operator_numRecordsOut{namespace="cld-streaming"}[5m])) by (job_name)
   ```  
   (adjust `job_name` regex to match your exact SSB fraud job name – check in Prometheus)  
 - Legend: `{{job_name}}`  
