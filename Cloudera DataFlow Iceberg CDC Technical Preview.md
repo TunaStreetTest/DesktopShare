@@ -3,14 +3,14 @@ layout: post
 title: "Cloudera DataFlow CDC Iceberg Technical Preview"
 date: "2026-05-13"
 categories: [cblog]
-tags: [nifi, dataflow, readyflow, CDC, Debezium, Db2, MySQL, Oracle, PostgreSQL, SQL Server, Iceberg]
+tags: [nifi, dataflow, iceberg, readyflow, CDC, Debezium, Db2, MySQL, Oracle, PostgreSQL, SQL Server]
 author: Steven Matison
 excerpt: "Deep dive into Cloudera DataFlow’s brand-new CDC ReadyFlows. I walk through every supported source database (Db2, MySQL, Oracle, PostgreSQL, SQL Server) and both Iceberg and Kudu targets — complete with deployment setup, sample database details, and the exact steps you’ll need to get them running in your environment."
 image: /assets/images/blog/cdf-cdc-preview-hero.png  <!-- placeholder for hero image -->
 reading_time: "25 minute read"
 ---
 
-# Hands-On Review of All ReadyFlows
+# Hands-On Review of All Iceberg CDC ReadyFlows
 
 Hey everyone, Steven Matison here — Cloudera Solutions Engineer and your guide through the modern Cloudera solutions around Apache NiFi.
 
@@ -18,11 +18,10 @@ Change Data Capture (CDC) is one of the most requested and most complicated capa
 
 In this lesson, I’m going to introduce you to **every single CDC Iceberg ReadyFlow** currently available in the Cloudera documentation. For each one I’ll cover:
 
-- What the flow actually does  
 - Source and target systems  
 - Exact setup and deployment details you’ll need to take
 - Sample databases I’m using for testing (with DDL and seed data)  
-- Configuration gotchas and best practices i find along the way 
+- Configuration gotchas and best practices I find along the way 
 
 Because this is a **Technical Preview**, things can (and probably will) evolve quickly — I’ll note what’s preview-only and where to watch for changes.
 
@@ -33,11 +32,11 @@ Because this is a **Technical Preview**, things can (and probably will) evolve q
 ## Table of Contents
 1. [Why CDC ReadyFlows Matter in Cloudera DataFlow](#why-cdc-readyflows-matter)  
 2. [CDC ReadyFlow Overview](#cdc-readyflow-overview)  
-3. [Db2 CDC ReadyFlows](#db2-cdc-readyflows)  
-4. [MySQL CDC ReadyFlows](#mysql-cdc-readyflows)  
-5. [Oracle CDC ReadyFlows](#oracle-cdc-readyflows)  
-6. [PostgreSQL CDC ReadyFlows](#postgresql-cdc-readyflows)  
-7. [SQL Server CDC ReadyFlows](#sql-server-cdc-readyflows)  
+3. [Db2 Iceberg CDC ReadyFlow](#db2-cdc-readyflow)  
+4. [MySQL Iceberg CDC ReadyFlow](#mysql-cdc-readyflow)  
+5. [Oracle Iceberg CDC ReadyFlow](#oracle-cdc-readyflow)  
+6. [PostgreSQL Iceberg CDC ReadyFlow](#postgresql-cdc-readyflow)  
+7. [SQL Server Iceberg CDC ReadyFlow](#sql-server-cdc-readyflow)  
 8. [Common Deployment Patterns & Best Practices](#common-deployment-patterns)  
 9. [Conclusion & What’s Next](#conclusion)  
 10. [You May Also Enjoy](#you-may-also-enjoy)
@@ -57,9 +56,9 @@ All of these Iceberg CDC flows are available today in the **ReadyFlow Catalog** 
 
 ---
 
-## CDC ReadyFlow Overview 
+## Iceberg CDC ReadyFlow Overview 
 
-Cloudera currently ships **ten CDC ReadyFlows**, grouped by source database:
+Cloudera currently ships **5 Iceberg CDC ReadyFlows**, grouped by source database:
 
 | Source Database | Target: Iceberg (Technical Preview) |
 |-----------------|-------------------------------------|
@@ -70,15 +69,15 @@ Cloudera currently ships **ten CDC ReadyFlows**, grouped by source database:
 | **SQL Server**  | ✅ SQL Server CDC to Iceberg       |
 
 **Key notes on the preview**:
-- All **to-Iceberg** flows are currently marked **Technical Preview**.
-- ReadyFlows leverage Debezium for change capture.
+- All **Iceberg CDC** ReadyFlows are currently marked **Technical Preview**.
+- ReadyFlows leverage Debezium for change data capture.
 - Flows handle row-level INSERT/UPDATE/DELETE events and can be configured for schema evolution.
 
 In the sections below I’ll break each one down with the exact setup details you’ll need to deploy them yourself.
 
 ---
 
-## Db2 CDC ReadyFlows
+## Db2 Iceberg CDC ReadyFlow
 
 ### Db2 CDC to Iceberg [Technical Preview]
 **Description**: Captures CDC events from a Db2 source table and streams them into an Apache Iceberg destination table.
@@ -91,7 +90,7 @@ In the sections below I’ll break each one down with the exact setup details yo
 
 ---
 
-## MySQL CDC ReadyFlows
+## MySQL Iceberg CDC ReadyFlow
 
 ### MySQL CDC to Iceberg [Technical Preview]
 **Description**: Retrieves CDC events from a MySQL source table and streams them to an Iceberg destination table.
@@ -103,21 +102,21 @@ In the sections below I’ll break each one down with the exact setup details yo
 
 ---
 
-## Oracle CDC ReadyFlows
+## Oracle Iceberg CDC ReadyFlow
 
 ### Oracle CDC to Iceberg [Technical Preview]
 **Description**: Captures events from an Oracle table and streams them into Iceberg.
 
 ---
 
-## PostgreSQL CDC ReadyFlows
+## PostgreSQL Iceberg CDC ReadyFlow
 
 ### PostgreSQL CDC to Iceberg [Technical Preview]
 **Description**: Uses Debezium to retrieve events from a PostgreSQL table and stream them into Iceberg.
 
 ---
 
-## SQL Server CDC ReadyFlows
+## SQL Server Iceberg CDC ReadyFlow
 
 ### SQL Server CDC to Iceberg [Technical Preview]
 **Description**: Uses Debezium to retrieve events from a SQL Server table and stream them into Iceberg.
@@ -139,7 +138,7 @@ In the sections below I’ll break each one down with the exact setup details yo
 
 ## Conclusion & What’s Next
 
-The new CDC ReadyFlows in Cloudera DataFlow represent a massive leap forward for real-time data movement in the Cloudera on Cloud ecosystem. If you’re landing changes into Iceberg for lakehouse analytics and you need more CDC like capabilities these pre-built flows remove weeks of custom development.
+The new Iceberg CDC ReadyFlows in Cloudera DataFlow represent a massive leap forward for real-time data movement in the Cloudera on Cloud ecosystem. If you’re landing changes into Iceberg for lakehouse analytics and you need more CDC like capabilities these pre-built flows remove weeks of custom development.
 
 **Stay tuned** — over the next few weeks I’ll be publishing the full deployment guides, sample databases, configuration files, and test results for each of these ReadyFlows right here on the blog. We’ll turn this framework into the most complete hands-on CDC reference available for Cloudera customers.
 
