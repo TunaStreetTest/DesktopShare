@@ -1,32 +1,32 @@
 ---
 layout: post
-title: "Cloudera DataFlow CDC Technical Preview: Hands-On Review of All ReadyFlows"
+title: "Cloudera DataFlow CDC Technical Preview"
 date: "2026-05-13"
-categories: [cloudera, dataflow, cdc, technical-preview, readyflows, niFi, iceberg, kudu]
-tags: [CDC, Debezium, Db2, MySQL, Oracle, PostgreSQL, SQL Server, Iceberg, Kudu, real-time-data]
+categories: [cblog]
+tags: [nifi, dataflow, readyflow, CDC, Debezium, Db2, MySQL, Oracle, PostgreSQL, SQL Server, Iceberg, Kudu]
 author: Steven Matison
 excerpt: "Deep dive into Cloudera DataFlow’s brand-new CDC ReadyFlows. I walk through every supported source database (Db2, MySQL, Oracle, PostgreSQL, SQL Server) and both Iceberg and Kudu targets — complete with deployment setup, sample database details, and the exact steps you’ll need to get them running in your environment."
 image: /assets/images/blog/cdf-cdc-preview-hero.png  <!-- placeholder for hero image -->
 reading_time: "25 minute read"
 ---
 
-# Cloudera DataFlow CDC Technical Preview: Hands-On Review of All ReadyFlows
+# Hands-On Review of All ReadyFlows
 
-Hey everyone, Steven Matison here — Cloudera Solutions Engineer and your guide through the world of real-time data orchestration.
+Hey everyone, Steven Matison here — Cloudera Solutions Engineer and your guide through the modern Cloudera solutions around Apache NiFi.
 
-Change Data Capture (CDC) has always been one of the most requested capabilities in Cloudera Data Platform, and with the latest **Cloudera DataFlow (CDF) Cloud Technical Preview**, the team has delivered a full suite of **ReadyFlows** that make CDC production-ready out of the box.
+Change Data Capture (CDC) is one of the most requested and most complicated capabilities in Cloudera Data Platform, and with the latest **Cloudera DataFlow (CDF) Cloud Technical Preview**, the team has delivered a full suite of **ReadyFlows** that make CDC developer-ready out of the box.
 
-In this (very big) post, I’m going to review **every single CDC ReadyFlow** currently available in the Cloudera documentation. For each one I’ll cover:
+In this lesson, I’m going to introduce you to **every single CDC ReadyFlow** currently available in the Cloudera documentation. For each one I’ll cover:
 
 - What the flow actually does  
 - Source and target systems  
-- Exact setup and deployment details you’ll need  
+- Exact setup and deployment details you’ll need to take
 - Sample databases I’m using for testing (with DDL and seed data)  
-- Configuration gotchas and best practices  
+- Configuration gotchas and best practices i find along the way 
 
 Because this is a **Technical Preview**, things can (and probably will) evolve quickly — I’ll note what’s preview-only and where to watch for changes.
 
-**This post is intentionally structured as a living framework.** I’ll be filling in the full step-by-step instructions, screenshots, configuration snippets, and test results in follow-up deep-dive sessions as I finish building and validating each flow in my lab environments. Think of this as the master blueprint we’ll expand together.
+**This post is intentionally structured as a living framework.** I’ll be filling in the full step-by-step instructions, screenshots, configuration snippets, and test results in follow-up deep-dive sessions as I finish building and validating each flow in my lab environments. Think of this as the master blueprint and I will expand it as the Technical Preview goes to General Availability.
 
 ---
 
@@ -203,15 +203,10 @@ In the sections below I’ll break each one down with the exact setup details yo
 
 ## Conclusion & What’s Next {#conclusion}
 
-The new CDC ReadyFlows in Cloudera DataFlow represent a massive leap forward for real-time data movement in the CDP ecosystem. Whether you’re landing changes into Iceberg for lakehouse analytics or Kudu for operational workloads, these pre-built flows remove weeks of custom development.
+The new CDC ReadyFlows in Cloudera DataFlow represent a massive leap forward for real-time data movement in the Cloudera on Cloud ecosystem. Whether you’re landing changes into Iceberg for lakehouse analytics or Kudu for operational workloads, these pre-built flows remove weeks of custom development.
 
 **Stay tuned** — over the next few weeks I’ll be publishing the full deployment guides, sample databases, configuration files, and test results for each of these ReadyFlows right here on the blog. We’ll turn this framework into the most complete hands-on CDC reference available for Cloudera customers.
 
 If you’re already on CDP Private Cloud or CDF Cloud and want to try these in your environment, drop me a note on X [@StevenMatison](https://x.com/StevenMatison) or LinkedIn — happy to compare notes or help you get the first flow running.
 
 **What’s your biggest CDC use case right now?** Let me know in the comments — I’ll prioritize the deep-dive sessions based on what the community needs most.
-
----
-
-## You May Also Enjoy
----
