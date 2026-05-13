@@ -7,22 +7,27 @@
 ### 2. Blog Posts
 - **How to AI with NiFi and Python**
   [https://cldr-steven-matison.github.io/blog/How-to-AI-with-NiFi-and-Python/](https://cldr-steven-matison.github.io/blog/How-to-AI-with-NiFi-and-Python/)
+
   (Explains my approach on how to use AI to build NiFi Python Processors)
 
 - **Observability with Cloudera Streaming Operators**
   [https://cldr-steven-matison.github.io/blog/Observability-with-Cloudera-Streaming-Operators/](https://cldr-steven-matison.github.io/blog/Observability-with-Cloudera-Streaming-Operators/)
+  
   (Wire the entire Cloudera Streaming Operator stack to Prometheus & Grafana)
 
 - **Custom Processors with Cloudera Streaming Operators**  
   [https://cldr-steven-matison.github.io/blog/Custom-Processors-With-Cloudera-Streaming-Operators/](https://cldr-steven-matison.github.io/blog/Custom-Processors-With-Cloudera-Streaming-Operators/)  
+  
   (Explains Python processor deployment, mount setup, and `nifi-cluster-30-nifi2x-python.yaml` pattern.)
 
 - **RAG with Cloudera Streaming Operators**  
   [https://cldr-steven-matison.github.io/blog/RAG-with-Cloudera-Streaming-Operators/](https://cldr-steven-matison.github.io/blog/RAG-with-Cloudera-Streaming-Operators/)  
-  (Your existing RAG flow with Kafka → chunking → TEI embedding server → vector DB.)
+  
+  (RAG flow with Kafka → chunking → TEI embedding server → vector DB.)
 
 - **Cloudera Streaming Operators**
 [https://cldr-steven-matison.github.io/blog/Cloudera-Streaming-Operators/](https://cldr-steven-matison.github.io/blog/Cloudera-Streaming-Operators/)
+
 (Explains the inital setup and creation of a whole kuberenetes cluster with CSM, CFM, CSA Operators from Cloudera.)
 
 ### 3. Supporting GitHub Repositories
