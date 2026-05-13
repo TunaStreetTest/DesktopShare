@@ -139,7 +139,7 @@ In the sections below I’ll break each one down with the exact setup details yo
 
 ## Conclusion & What’s Next
 
-The new CDC ReadyFlows in Cloudera DataFlow represent a massive leap forward for real-time data movement in the Cloudera on Cloud ecosystem. Whether you’re landing changes into Iceberg for lakehouse analytics or Kudu for operational workloads, these pre-built flows remove weeks of custom development.
+The new CDC ReadyFlows in Cloudera DataFlow represent a massive leap forward for real-time data movement in the Cloudera on Cloud ecosystem. If you’re landing changes into Iceberg for lakehouse analytics and you need more CDC like capabilities these pre-built flows remove weeks of custom development.
 
 **Stay tuned** — over the next few weeks I’ll be publishing the full deployment guides, sample databases, configuration files, and test results for each of these ReadyFlows right here on the blog. We’ll turn this framework into the most complete hands-on CDC reference available for Cloudera customers.
 
