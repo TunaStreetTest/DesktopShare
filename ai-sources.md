@@ -29,7 +29,7 @@
 
 - **Cloudera Streaming Operators**
 
-[https://cldr-steven-matison.github.io/blog/Cloudera-Streaming-Operators/](https://cldr-steven-matison.github.io/blog/Cloudera-Streaming-Operators/)
+  [https://cldr-steven-matison.github.io/blog/Cloudera-Streaming-Operators/](https://cldr-steven-matison.github.io/blog/Cloudera-Streaming-Operators/)
   - Explains the inital setup and creation of a whole kuberenetes cluster with CSM, CFM, CSA Operators from Cloudera.
 
 ### 3. Supporting GitHub Repositories
