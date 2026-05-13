@@ -23,14 +23,13 @@
 
 - **Cloudera Streaming Operators**
 [https://cldr-steven-matison.github.io/blog/Cloudera-Streaming-Operators/](https://cldr-steven-matison.github.io/blog/Cloudera-Streaming-Operators/)
-
-(Explains the inital setup and creation of a whole kuberenetes cluster with CSM, CFM, CSA Operators from Cloudera.)
+  - Explains the inital setup and creation of a whole kuberenetes cluster with CSM, CFM, CSA Operators from Cloudera.)
 
 ### 3. Supporting GitHub Repositories
 - **NiFi2-Processor-Playground**  
   [https://github.com/cldr-steven-matison/NiFi2-Processor-Playground](https://github.com/cldr-steven-matison/NiFi2-Processor-Playground)  
-  (Working Python processor examples from various lessons such as `TransactionGenerator.py` / `NewTransactionGenerator.py` / `FraudModel.py`
+  - Working Python processor examples from various lessons such as `TransactionGenerator.py` / `NewTransactionGenerator.py` / `FraudModel.py`
 
 - **MiNiFi-Kubernetes-Playground**  
   [https://github.com/cldr-steven-matison/MiNiFi-Kubernetes-Playground](https://github.com/cldr-steven-matison/MiNiFi-Kubernetes-Playground)  
-  (A clean-slate playground for experimenting with **Apache MiNiFi C++** on **Minikube** (Kubernetes). Includes a custom `Dockerfile`, strict `config.yml` (ListenHTTP → PublishKafka + PutFile), Kubernetes `Deployment`/`Service` manifests with readiness probe fixes, and a “nuclear” rebuild script for fast iteration without caching issues.)
+  - A clean-slate playground for experimenting with **Apache MiNiFi C++** on **Minikube** (Kubernetes). Includes a custom `Dockerfile`, strict `config.yml` (ListenHTTP → PublishKafka + PutFile), Kubernetes `Deployment`/`Service` manifests with readiness probe fixes, and a “nuclear” rebuild script for fast iteration without caching issues.)
