@@ -39,7 +39,6 @@ Because this is a **Technical Preview**, things can (and probably will) evolve q
 7. [SQL Server Iceberg CDC ReadyFlow](#sql-server-cdc-readyflow)  
 8. [Common Deployment Patterns & Best Practices](#common-deployment-patterns)  
 9. [Conclusion & What’s Next](#conclusion)  
-10. [You May Also Enjoy](#you-may-also-enjoy)
 
 ---
 
