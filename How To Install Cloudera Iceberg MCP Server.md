@@ -39,10 +39,11 @@ The MCP Server connects to your **Impala Virtual Warehouse** (or Data Hub cluste
 3. In the **Details** tab or **Connection** section, click **Copy JDBC URL** (or find the Impala coordinator endpoint).
 4. The JDBC URL will look similar to this:  
    ```
-   jdbc:impala://coordinator-xxx.dw-xxx.a123-4b5c.cloudera.site:443/default;AuthMech=3;transportMode=http;httpPath=cliservice;ssl=1;UID=yourworkloaduser;PWD=yourpassword
+   jdbc:impala://coordinator-default-impala-aws.[dw name].[env name].cloudera.site:443/default;AuthMech=12;transportMode=http;httpPath=cliservice;ssl=1;auth=browser
    ```
+
 5. Extract these values for the MCP Server environment variables:
-   - **IMPALA_HOST** → `coordinator-xxx.dw-xxx.a123-4b5c.cloudera.site` (the hostname only)
+   - **IMPALA_HOST** → `coordinator-default-impala-aws.[dw name].[env name].cloudera.site` (the hostname only)
    - **IMPALA_PORT** → `443`
    - **IMPALA_USER** → Your workload username (e.g., `srv_cia_test_user` or IAM user)
    - **IMPALA_PASSWORD** → The corresponding password
@@ -55,7 +56,6 @@ The MCP Server connects to your **Impala Virtual Warehouse** (or Data Hub cluste
 ## Step 2: Clone the Repository
 
 ```bash
-# Clone my fork (or your own fork)
 git clone https://github.com/cldr-steven-matison/iceberg-mcp-server.git
 cd iceberg-mcp-server
 ```
@@ -91,7 +91,6 @@ set -a; source .env; set +a
 MCP Inspector is the easiest way to test the server locally.
 
 ```bash
-# Run MCP Inspector and launch the local server (Option 2)
 npx @modelcontextprotocol/inspector \
   uv --directory "$(pwd)" run src/iceberg_mcp_server/server.py
 ```
