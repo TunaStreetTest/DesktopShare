@@ -68,7 +68,7 @@ Create a `.env` file in the root of the repository for easy loading (recommended
 
 ```bash
 cat > .env << EOF
-IMPALA_HOST=coordinator-xxx.dw-xxx.a123-4b5c.cloudera.site
+IMPALA_HOST=coordinator-default-impala-aws.[dw name].[env name].cloudera.site
 IMPALA_PORT=443
 IMPALA_USER=yourworkloaduser
 IMPALA_PASSWORD=yourpassword
