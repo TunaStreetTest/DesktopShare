@@ -132,24 +132,36 @@ Once the MCP inspector loads:
 
 → Returns actual data rows.
 
-**Success Confirmation**:  
+### Success
+
 All tests complete without errors, tools are listed correctly, and queries return valid JSON results from your Cloudera Public Cloud Impala/Iceberg environment. The server is ready for use with Claude Desktop, LangChain, or any MCP client.
 
 ---
 
-## Contributing Back – Example PR from Develop Branch
+## Cloudera MCP Servers
 
-The goal of this exercise is not just installation — it’s to teach **how to contribute** back to the upstream Cloudera project.
+* [Cloudera NiFi MCP Server](https://github.com/cloudera/NiFi-MCP-Server)
+* [Cloudera Iceberg MCP Server](https://github.com/cloudera/iceberg-mcp-server)
+* [Cloudera AI WorkBech MCP Server](https://github.com/cloudera/CAI_Workbench_MCP_Server)
+* [Cloudera Dataviz MCP Server](https://github.com/cloudera/CDV-MCP-Server)
 
-### Suggested Contribution (Easy Starter PR)
-**Item/Adjustment**: Add official Macintosh local-install instructions + `.env` support + MCP Inspector testing guide to the README.
+## {{ page.title }}
+If you would like a deeper dive, hands on experience, demos, or are interested in speaking with me further about {{ page.title }} please reach out to schedule a discussion.
+
+
+## Appendix
+
+### 1. Contributing Back – Example PR from Develop Branch
+
+The goal of this exercise post installation — is to teach **how to contribute** back to the upstream Cloudera project.
+
+#### Suggested Contribution (Easy Starter PR)
+**Item/Adjustment**: Add more local-install instructions + `.env` support to the README.
 
 **Why this is valuable**:
 - The current upstream README (`cloudera/iceberg-mcp-server`) only has minimal Option 2 instructions.
-- No Mac-specific setup or testing section exists.
-- Adding `.env` loading (using `python-dotenv`) would make local dev much smoother for everyone.
 
-### How to Contribute (Step-by-Step)
+#### How to Contribute (Step-by-Step)
 
 1. In **your fork** (`cldr-steven-matison/iceberg-mcp-server`):
    ```bash
@@ -158,25 +170,20 @@ The goal of this exercise is not just installation — it’s to teach **how to 
    ```
 
 2. Make the change (example):
-   - Update `README.md` with the full Macintosh guide you just followed.
-   - (Optional code tweak) Add this to `src/iceberg_mcp_server/server.py` near the top:
-     ```python
-     from dotenv import load_dotenv
-     load_dotenv()  # Loads .env automatically
-     ```
+   - Update `README.md` with the steps you just followed.
 
 3. Commit and push:
    ```bash
    git add README.md src/iceberg_mcp_server/server.py
-   git commit -m "feat: add macOS local install guide + .env support + MCP Inspector testing"
+   git commit -m "feat: update readme local install"
    git push
    ```
 
 4. Open a **Pull Request**:
    - Go to your fork on GitHub → Compare & pull request → Base repository: `cloudera/iceberg-mcp-server` → Base branch: `main`
-   - Title: "Add macOS Option 2 local install guide, .env support, and MCP Inspector testing"
+   - Title: "Update Readme for Local Install"
    - Link back to this blog post for context.
 
-This PR would be merged quickly because it improves documentation and developer experience for the entire community.
+This PR would be merged quickly because it improves documentation for the entire community.
 
 ---
