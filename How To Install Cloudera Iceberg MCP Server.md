@@ -1,7 +1,7 @@
 
 # How To Install Cloudera Iceberg MCP Server
 
-This guide walks you through **Option 2 (Local Install)** of the Cloudera Iceberg MCP Server on a local machine. The Iceberg MCP Server is a Model Context Protocol (MCP) server that gives LLMs and AI agents read-only access to Iceberg tables via Apache Impala. It exposes two powerful tools:  
+This guide walks you through **Option 2 (Local Install)** of the [Cloudera Iceberg MCP Server](https://github.com/cloudera/iceberg-mcp-server) on a local machine. The Iceberg MCP Server is a Model Context Protocol (MCP) server that gives LLMs and AI agents read-only access to Iceberg tables via Apache Impala. It exposes two powerful tools:  
 - `get_schema()` – Lists all tables available in the current database.  
 - `execute_query(query: str)` – Runs any SQL query on Impala and returns results as JSON.  
 
@@ -174,7 +174,7 @@ The goal of this exercise post installation — is to teach **how to contribute*
 
 3. Commit and push:
    ```bash
-   git add README.md src/iceberg_mcp_server/server.py
+   git add README.md
    git commit -m "feat: update readme local install"
    git push
    ```
