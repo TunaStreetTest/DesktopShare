@@ -49,7 +49,7 @@ The MCP Server connects to your **Impala Virtual Warehouse** (or Data Hub cluste
    - **IMPALA_PASSWORD** → The corresponding password
    - **IMPALA_DATABASE** → Usually `default` (or your target database)
 
-**Tip**: Use a **workload user** or service account with appropriate Impala permissions. Avoid using the admin account for security.
+**Tip**: Use a **workload user** or service account with appropriate Impala permissions.
 
 ---
 
@@ -110,7 +110,7 @@ Once the MCP inspector loads:
    - `get_schema()`
    - `execute_query(query: str)`
 
-### Example Tests (copy-paste into Inspector):
+### Example Tests
 
 **Test 1: Get Schema**
 
