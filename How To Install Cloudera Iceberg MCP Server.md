@@ -91,8 +91,7 @@ set -a; source .env; set +a
 MCP Inspector is the easiest way to test the server locally.
 
 ```bash
-npx @modelcontextprotocol/inspector \
-  uv --directory "$(pwd)" run src/iceberg_mcp_server/server.py
+npx @modelcontextprotocol/inspector uv run src/iceberg_mcp_server/server.py
 ```
 
 This command:
@@ -103,7 +102,7 @@ This command:
 
 ## Step 5: Testing – Confirmation Iceberg MCP Services Work with MCP Inspector
 
-Once the inspector loads:
+Once the MCP inspector loads:
 
 1. **Connect** to the server (it auto-detects the running process).
 2. Confirm the server version and status.
@@ -114,34 +113,23 @@ Once the inspector loads:
 ### Example Tests (copy-paste into Inspector):
 
 **Test 1: Get Schema**
-```json
-{
-  "name": "get_schema",
-  "arguments": {}
-}
-```
+
+   Click Run Tool
+
 → Returns a JSON list of all tables in the `IMPALA_DATABASE`.
 
 **Test 2: Execute a Simple Query**
-```json
-{
-  "name": "execute_query",
-  "arguments": {
-    "query": "SHOW TABLES"
-  }
-}
-```
+
+   `SHOW TABLES`
+    Click Run Tool
+
 → Returns table names as JSON.
 
 **Test 3: Real Iceberg Query**
-```json
-{
-  "name": "execute_query",
-  "arguments": {
-    "query": "SELECT * FROM your_iceberg_table LIMIT 5"
-  }
-}
-```
+
+   `SELECT * FROM your_iceberg_table LIMIT 5`
+    Click Run Tool
+
 → Returns actual data rows.
 
 **Success Confirmation**:  
