@@ -1,34 +1,20 @@
 **Cloudera Edge Flow Manager (EFM) with Jetson Orin Nano for AI at the Edge**
 
-Hey folks, Steven Matison here. If you’ve been following my Cloudera Community posts, my GitHub pages at [cldr-steven-matison.github.io](https://cldr-steven-matison.github.io/), or the fresh content now flowing to [stevenmatison.com](https://stevenmatison.com), you know I’m all about making complex streaming, flow management, and edge AI setups actually *work* on real hardware — including my own Windows dev box with WSL2, kubernetes, and now NVIDIA Jetson Orin Nano.  
+Hey folks, Steven Matison here. If you’ve been following my Cloudera Community posts, my GitHub pages at [cldr-steven-matison.github.io](https://cldr-steven-matison.github.io/), or the fresh content now flowing to [stevenmatison.com](https://stevenmatison.com), you know I’m all about making complex streaming, flow management, and edge AI setups actually *work* on real hardware — Windows, mac, ubuntu, docker, kubernetes, and now a new NVIDIA Jetson Orin Nano.  
 
-Today we’re going deep: a complete, ai local lab for **Cloudera Edge Flow Manager (EFM / CEM)**, the full **Cloudera Streaming Operator (CSO)** stack (CFM + CSM + CSA) on Minikube Kubernetes, and then deploying **MiNiFi C++ agents** to NVIDIA Jetson Orin Nano.  
+Today we’re going deep: with local lab for **Cloudera Edge Flow Manager (EFM / CEM)**, next to the full **Cloudera Streaming Operator (CSO)** stack (CFM + CSM + CSA) on Minikube Kubernetes, and then deploying **MiNiFi C++ agents** to NVIDIA Jetson Orin Nano.  
 
-The goal? Design flows + ML model assets once in EFM, push them to edge agents, execute custom models *inside* MiNiFi on the Jetson, and ship system + processor + model metrics straight to the Prometheus instance living inside your CSO stack. All of it documented exactly the way I like — repeatable, with every command, and all the gotchas spelled out.
+The goal? Design ai enabled nifi flows + ML model assets once in EFM, push them to edge agents, execute custom models *inside* MiNiFi on the Jetson, and ship system + processor + model metrics straight to the Prometheus instance living inside the CSO stack. All of it documented exactly the way I like — repeatable, with every command, and all the gotchas spelled out.
 
 This post directly extends:
 - My full **Cloudera Streaming Operators on Minikube** guide on the Cloudera Community (and the companion repo).
 - My **Observability with Cloudera Streaming Operators** blog (Prometheus + Grafana for NiFi, Kafka, Flink).
+- My **[MiNiFi Kubernetes Playfround](https://github.com/cldr-steven-matison/MiNiFi-Kubernetes-Playground)** for testing MiNiFi
 - Official Cloudera CEM/EFM and MiNiFi C++ docs (with my WSL2/Windows/Jeston tweaks).
 
 Let’s dive in.
 
-### 1. Prerequisites & Environment
-
-On my Windows desktop I run everything inside WSL2 for consistency (Minikube works beautifully there).
-
-- **Minikube**: Install via official script (WSL2 driver).
-- **Helm**, **kubectl**, **k9s** (for convenience).
-- **Cloudera license** (evaluation or enterprise) and container-registry credentials.
-- **NVIDIA Jetson Orin Nano** pre-flashed with JetPack 6.x (Docker + NVIDIA Container Toolkit already there).
-
-Clone my CSO repo now (we’ll use it heavily):
-```bash
-git clone https://github.com/cldr-steven-matison/ClouderaStreamingOperators.git
-cd ClouderaStreamingOperators
-```
-
-### 2. Install Cloudera Edge Flow Manager (EFM) Standalone in WSL2 Ubuntu
+### Install Cloudera Edge Flow Manager (EFM) Standalone in WSL2 Ubuntu
 
 EFM is Java-based and runs cleanly on Ubuntu 22.04/24.04 inside WSL2. Follow the official standalone path (no Cloudera Manager needed for a lab).
 
@@ -71,43 +57,7 @@ EFM is Java-based and runs cleanly on Ubuntu 22.04/24.04 inside WSL2. Follow the
 
 EFM is now your single pane of glass for designing flows, bundling ML models as assets, and pushing to MiNiFi agents.
 
-### 3. Spin Up Minikube + Full Cloudera Streaming Operators (CSO) Stack
-
-Follow **exactly** the steps in my Cloudera Community article “Cloudera Streaming Operators” and the YAMLs in the GitHub repo I linked above. I wrote it for macOS but it translates 1:1 to WSL2 Ubuntu.
-
-Key commands (inside WSL2):
-```bash
-minikube start --cpus=6 --memory=16384 --driver=docker --kubernetes-version=stable
-minikube addons enable ingress
-
-# Create namespace + Cloudera creds secret (use your license.txt)
-kubectl create ns cld-streaming
-# ... docker-registry secret, cert-manager, helm login to container.repository.cloudera.com
-
-# Install operators (Strimzi for Kafka, CSA, CFM) — see repo for exact helm install lines
-# Apply kafka-eval.yaml + nodepool, schema-registry, surveyor, NiFi clusters, etc.
-```
-
-Once running you have:
-- Kafka (CSM)
-- Schema Registry
-- Flink / SQL Stream Builder (CSA)
-- NiFi (CFM)
-- All exposed via Minikube ingress / NodePort.
-
-### 4. CSO Observability: Prometheus + Grafana (My Dedicated Blog Guide)
-
-Head to my blog post **[Observability with Cloudera Streaming Operators](https://cldr-steven-matison.github.io/blog/Observability-with-Cloudera-Streaming-Operators/)**.
-
-In short:
-- Install `kube-prometheus-stack` via Helm in the `cld-streaming` namespace.
-- Add ServiceMonitors / PodMonitors for NiFi, Flink, Strimzi/Kafka.
-- Deploy my pre-built Grafana dashboards (NiFi queue depths, Flink job latency, Kafka throughput, and a custom “Edge Metrics” one).
-- EFM itself exposes `/efm/actuator/prometheus` — scrape it from the same Prometheus instance.
-
-Your CSO Prometheus is now the central metrics sink for the entire lab **and** every MiNiFi agent.
-
-### 5. Deploy MiNiFi C++ Agents from EFM (The Fun Part)
+### Deploy MiNiFi C++ Agents from EFM (The Fun Part)
 
 In EFM UI:
 1. Design your flow (or import one).
@@ -150,11 +100,3 @@ The agent registers itself with EFM, EFM knows the Prometheus scrape target, or 
 4. Metrics appear in Grafana (EFM + CSO + MiNiFi all in one place).
 5. Scale: add more Jetson devices, Windows edge nodes, or K8s pods — EFM handles it.
 
-### Troubleshooting & Pro Tips (from my own lab)
-
-- WSL2 memory pressure → give Minikube 16GB+.
-- Jetson Docker GPU passthrough: `--runtime=nvidia --gpus all`.
-- MiNiFi C++ on ARM: If the official binary doesn’t exist, build from Apache MiNiFi C++ source with aarch64 toolchain (I have a branch in my GitHub if you need it).
-- Security: In production replace self-signed certs and add mTLS between EFM ↔ agents.
-
-That’s it — a fully functional local Edge AI + streaming lab that mirrors real enterprise deployments.  
