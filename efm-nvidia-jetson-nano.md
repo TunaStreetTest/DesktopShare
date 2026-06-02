@@ -222,6 +222,20 @@ kubectl cp ~/efm-binaries/java -n cld-streaming $(kubectl get pod -n cld-streami
 kubectl cp ~/efm-binaries/cpp -n cld-streaming $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}'):/opt/efm/agent-deployer/binaries/cpp
 ```
 
+Wait for EFM pod to be fully ready (important!)
+
+```bash
+
+kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
+```
+
+Restart EFM once so it immediately sees the new binaries (optional but recommended)
+
+```bash
+kubectl rollout restart deployment/efm -n cld-streaming
+kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
+```
+
 Verify inside the pod:
 
 ```bash
