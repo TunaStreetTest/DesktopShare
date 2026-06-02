@@ -151,7 +151,7 @@ kubectl apply -f efm-deployment.yaml
 ### 5. Expose EFM for Easy Access
 
 ```bash
-kubectl expose deployment efm --type=NodePort --port=10090 -n cld-streaming
+minikube tunnel
 ```
 
 [http://127.0.0.1:10090/efm/ui](http://127.0.0.1:10090/efm/ui)
