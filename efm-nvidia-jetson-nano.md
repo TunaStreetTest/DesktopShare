@@ -42,11 +42,12 @@ kubectl create secret generic efm-db-pass \
   --namespace cld-streaming
 ```
 
-### 3. (One-time) Pull the Official EFM Docker Image into Minikube
+### 3. Pull the Official EFM Docker Image into Minikube
 
 ```bash
-docker login container.repo.cloudera.com   # use your Cloudera creds
-minikube ssh -- docker pull container.repo.cloudera.com/cloudera/efm:2.2.0.0-86
+eval $(minikube docker-env)
+docker login container.repo.cloudera.com
+docker pull container.repo.cloudera.com/cloudera/efm:2.2.0.0-86
 ```
 
 Use the exact tag that matches your CSO / CEM entitlement — 2.2.0.0-86 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
