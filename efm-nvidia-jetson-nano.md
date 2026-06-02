@@ -46,7 +46,7 @@ kubectl create secret generic efm-db-pass \
 ```bash
 eval $(minikube docker-env)
 docker login container.repo.cloudera.com
-docker pull container.repo.cloudera.com/cloudera/efm:2.2.0.0-86
+docker pull container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
 ```
 
 Use the exact tag that matches your CSO / CEM entitlement — 2.2.0.0-86 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
@@ -77,7 +77,7 @@ spec:
       - name: cloudera-registry   # you already created this for CSO
       containers:
       - name: efm
-        image: container.repo.cloudera.com/cloudera/efm:2.2.0.0-86
+        image: container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
         ports:
         - containerPort: 10090   # EFM UI / API
         - containerPort: 9092    # Prometheus metrics
