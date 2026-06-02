@@ -14,7 +14,8 @@ This post directly extends:
 
 Let’s dive in.
 
-### 1. Create the EFM Database & User in Your Existing SSB Postgres
+
+### Create the EFM Database & User in Your Existing SSB Postgres
 
 First, find the Postgres pod:
 
@@ -33,7 +34,7 @@ kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres 
 kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "ALTER DATABASE efm OWNER TO efm;"
 ```
 
-### 2. Create the EFM Database Password Secret
+### Create the EFM Database Password Secret
 
 ```bash
 kubectl create secret generic efm-db-pass \
@@ -41,7 +42,34 @@ kubectl create secret generic efm-db-pass \
   --namespace cld-streaming
 ```
 
-### 3. Pull the Official EFM Docker Image into Minikube
+
+### Create a PersistentVolumeClaim for Agent Binaries (so they survive pod restarts)
+
+Create `efm-agent-binaries-pvc.yaml`:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efm-agent-binaries
+  namespace: cld-streaming
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi   # plenty for several versions of Java + C++
+  storageClassName: standard   # Minikube default
+```
+
+Apply it:
+
+```bash
+kubectl apply -f efm-agent-binaries-pvc.yaml
+```
+
+
+### Pull the Official EFM Docker Image into Minikube
 
 ```bash
 eval $(minikube docker-env)
@@ -51,7 +79,7 @@ docker pull container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
 
 Use the exact tag that matches your CSO / CEM entitlement — 2.2.0.0-86 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
 
-### 4. EFM Deployment YAML (`efm-deployment.yaml`)
+### EFM Deployment YAML (`efm-deployment.yaml`)
 
 Create this file in your working directory:
 
@@ -116,6 +144,13 @@ spec:
           limits:
             cpu: "250m"
             memory: "4Gi"
+      volumeMounts:
+        - name: agent-binaries
+          mountPath: /opt/efm/agent-deployer/binaries   # This is the default path in the 2.3 Docker image
+      volumes:
+      - name: agent-binaries
+        persistentVolumeClaim:
+          claimName: efm-agent-binaries
 
 ---
 
@@ -155,7 +190,50 @@ Apply it:
 kubectl apply -f efm-deployment.yaml
 ```
 
-### 5. Expose EFM for Easy Access
+### Download Compatible MiNiFi Java & C++ Binaries (Cloudera archive)
+
+You need binaries that match EFM 2.3.x compatibility:
+
+- **MiNiFi Java** → 2.24.08 (or any 2.24.x / 1.23+)
+- **MiNiFi C++** → 1.26.02 (best for Jetson Docker workflow)
+
+Log in to your Cloudera account (same credentials you used for `docker login container.repo.cloudera.com`) and download from:
+
+- Java: `https://archive.cloudera.com/p/cem-agents/...` (search “nifi-minifi-java” under CEM agents)
+- C++ Linux: `https://archive.cloudera.com/p/cem-agents/1.26.02/ubuntu24/apt/tars/nifi-minifi-cpp/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz` (and the extra-extensions + python-components if you want AI/ExecutePython)
+
+**Rename exactly as EFM expects** (one file per version directory):
+
+On your laptop/host, create a temp folder and prepare:
+
+```bash
+mkdir -p ~/efm-binaries/java/linux/2.24.08
+mkdir -p ~/efm-binaries/cpp/linux/1.26.02
+
+# Example commands (replace with your actual downloaded files)
+cp /path/to/nifi-minifi-java-2.24.08-bin.tar.gz ~/efm-binaries/java/linux/2.24.08/minifi.tar.gz
+cp /path/to/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz ~/efm-binaries/cpp/linux/1.26.02/minifi.tar.gz
+```
+
+(If you want extra C++ extensions for TensorRT/ONNX/Python on Jetson, also copy the extra tar/zip and place it in the same version dir — EFM will serve it.)
+
+### Copy Binaries into the EFM Pod (via PVC)
+
+```bash
+# Copy the whole tree into the pod
+kubectl cp ~/efm-binaries/java -n cld-streaming $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}'):/opt/efm/agent-deployer/binaries/java
+kubectl cp ~/efm-binaries/cpp -n cld-streaming $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}'):/opt/efm/agent-deployer/binaries/cpp
+```
+
+Verify inside the pod:
+
+```bash
+kubectl exec -it <efm-pod-name> -n cld-streaming -- ls -lR /opt/efm/agent-deployer/binaries
+```
+
+You should now see the full structure with `minifi.tar.gz` files.
+
+### Expose EFM for Easy Access
 
 ```bash
 minikube tunnel
@@ -166,7 +244,7 @@ minikube tunnel
 
 Open that URL in your browser — you should land on the EFM login screen.
 
-### 6. Add EFM to Your CSO Prometheus Observability
+### Add EFM to Your CSO Prometheus Observability
 
 Create `efm-servicemonitor.yaml`:
 
