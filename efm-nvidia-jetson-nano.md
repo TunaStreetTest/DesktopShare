@@ -102,29 +102,24 @@ spec:
         app: efm
     spec:
       imagePullSecrets:
-      - name: cloudera-registry   # you already created this for CSO
+      - name: cloudera-registry
       containers:
       - name: efm
         image: container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
         ports:
-        - containerPort: 10090   # EFM UI / API
-        - containerPort: 9092    # Prometheus metrics
+        - containerPort: 10090
+        - containerPort: 9092
         env:
         - name: EF_DB_URL
           value: "jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm"
-        
-        # NiFi Registry Integration (Cross-Namespace Routing)
         - name: EF_REGISTRY_URL
           value: "http://nifi-registry-edge-svc.cfm-streaming.svc:18080"
         - name: EF_REGISTRY_ENABLED
           value: "true"
-
-        # Force the JVM to override the database driver configurations globally
         - name: JAVA_OPTS
           value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
         - name: EF_JAVA_OPTS
           value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
-
         - name: EFM_DB_USER
           value: efm
         - name: EFM_DB_PASSWORD
@@ -135,7 +130,7 @@ spec:
         - name: EFM_ENCRYPTION_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: efm-encryption   # create this if you don't have it yet
+              name: efm-encryption
               key: encryption.password
         resources:
           requests:
@@ -144,9 +139,11 @@ spec:
           limits:
             cpu: "250m"
             memory: "4Gi"
-      volumeMounts:
+        # === Agent binaries PVC mount (confirmed correct path for 2.3.x Docker image) ===
+        volumeMounts:
         - name: agent-binaries
-          mountPath: /opt/efm/agent-deployer/binaries   # This is the default path in the 2.3 Docker image
+          mountPath: /opt/efm/agent-deployer/binaries
+      # === PVC volume definition (must be at pod spec level, sibling to containers) ===
       volumes:
       - name: agent-binaries
         persistentVolumeClaim:
