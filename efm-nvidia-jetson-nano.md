@@ -1,10 +1,10 @@
 **Cloudera Edge Flow Manager (EFM) with Jetson Orin Nano for AI at the Edge**
 
-Hey folks, Steven Matison here. If you’ve been following my Cloudera Community posts, my GitHub pages at [cldr-steven-matison.github.io](https://cldr-steven-matison.github.io/), or the fresh content now flowing to [stevenmatison.com](https://stevenmatison.com), you know I’m all about making complex streaming, flow management, and edge AI setups actually *work* on real hardware — Windows, mac, ubuntu, docker, kubernetes, and now a new NVIDIA Jetson Orin Nano.  
+Hey folks, Steven Matison here. If you’ve been following my Cloudera Community posts, my GitHub pages at [cldr-steven-matison.github.io](https://cldr-steven-matison.github.io/), or the fresh content now flowing to [stevenmatison.com](https://stevenmatison.com), you know I’m all about making complex streaming, flow management, and edge AI setups actually *work* on real hardware — windows, mac, ubuntu, docker, kubernetes, and now a new NVIDIA Jetson Orin Nano.  
 
 Today we’re going deep: with local lab for **Cloudera Edge Flow Manager (EFM / CEM)**, next to the full **Cloudera Streaming Operator (CSO)** stack (CFM + CSM + CSA) on Minikube Kubernetes, and then deploying **MiNiFi C++ agents** to NVIDIA Jetson Orin Nano.  
 
-The goal? Design ai enabled nifi flows + ML model assets once in EFM, push them to edge agents, execute custom models *inside* MiNiFi on the Jetson, and ship system + processor + model metrics straight to the Prometheus instance living inside the CSO stack. All of it documented exactly the way I like — repeatable, with every command, and all the gotchas spelled out.
+The goal? Design ai enabled nifi flows + ML model assets once in EFM, push them to edge agents.  We will execute custom models *inside* MiNiFi on the Jetson, and ship system + processor + model metrics straight to the Prometheus instance living inside the CSO stack. All of it documented exactly the way I like — repeatable, with every command, and all the gotchas spelled out.
 
 This post directly extends:
 - My full **Cloudera Streaming Operators on Minikube** guide on the Cloudera Community (and the companion repo).
@@ -14,48 +14,145 @@ This post directly extends:
 
 Let’s dive in.
 
-### Install Cloudera Edge Flow Manager (EFM) Standalone in WSL2 Ubuntu
 
-EFM is Java-based and runs cleanly on Ubuntu 22.04/24.04 inside WSL2. Follow the official standalone path (no Cloudera Manager needed for a lab).
+### 1. Create the EFM Database & User in Your Existing SSB Postgres
 
-**Step-by-step EFM Install**
+First, find the Postgres pod:
 
-1. **Database** (PostgreSQL — EFM’s recommended):
-   ```bash
-   sudo -u postgres psql -c "CREATE DATABASE efm;"
-   sudo -u postgres psql -c "CREATE USER efm WITH PASSWORD 'efm_password';"
-   sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE efm TO efm;"
-   ```
+```bash
+kubectl get pods -n cld-streaming | grep postgres
+```
 
-2. **Java 17** (already installed above). Set `JAVA_HOME`:
-   ```bash
-   echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> ~/.bashrc
-   source ~/.bashrc
-   ```
+Copy the pod name (e.g. `ssb-postgresql-abc123-xyz`).
 
-3. **Download & Install EFM** (latest 2.x from Cloudera archive — use your licensed repo or public evaluation):
-   ```bash
-   mkdir -p /opt/cloudera/efm && cd /opt/cloudera/efm
-   # Example for latest tarball (replace with your version/link)
-   wget https://archive.cloudera.com/p/cem/2.x/...
-   tar -xzf efm-*.tar.gz
-   ln -s efm-* current
-   ```
+Now run these one-time psql commands **inside** that pod:
 
-4. **Configure** (`/opt/cloudera/efm/current/conf/efm.properties`):
-   - Set DB connection, port `10090`, etc.
-   - Enable Prometheus metrics endpoint (`efm.actuator.prometheus`).
-   - Point to your future CSO Kafka if you want EFM to ingest edge data.
+```bash
+kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "CREATE DATABASE efm;"
+kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "CREATE USER efm WITH PASSWORD 'efm_password';"
+kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE efm TO efm;"
+kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "ALTER DATABASE efm OWNER TO efm;"
+```
 
-5. **Start EFM**:
-   ```bash
-   sudo /opt/cloudera/efm/current/bin/efm.sh start
-   ```
-   Access UI at `http://localhost:10090` (or your WSL IP). First login creates the admin user.
+### 2. Create the EFM Database Password Secret
 
-**WSL2 gotcha**: Port forwarding works automatically, but if you want Windows browser access, use `localhost:10090` or add a Windows firewall rule.
+```bash
+kubectl create secret generic efm-db-pass \
+  --from-literal=password=efm_password \
+  --namespace cld-streaming
+```
 
-EFM is now your single pane of glass for designing flows, bundling ML models as assets, and pushing to MiNiFi agents.
+### 3. (One-time) Pull the Official EFM Docker Image into Minikube
+
+```bash
+docker login container.repo.cloudera.com   # use your Cloudera creds
+minikube ssh -- docker pull container.repo.cloudera.com/cloudera/efm:2.2.0.0-86
+```
+
+Use the exact tag that matches your CSO / CEM entitlement — 2.2.0.0-86 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
+
+### 4. EFM Deployment YAML (`efm-deployment.yaml`)
+
+Create this file in your working directory:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: efm
+  namespace: cld-streaming
+  labels:
+    app: efm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: efm
+  template:
+    metadata:
+      labels:
+        app: efm
+    spec:
+      imagePullSecrets:
+      - name: cloudera-registry   # you already created this for CSO
+      containers:
+      - name: efm
+        image: container.repo.cloudera.com/cloudera/efm:2.2.0.0-86
+        ports:
+        - containerPort: 10090   # EFM UI / API
+        - containerPort: 9092    # Prometheus metrics
+        env:
+        - name: EFM_DB_URL
+          value: "jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm"
+        - name: EFM_DB_USER
+          value: efm
+        - name: EFM_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: efm-db-pass
+              key: password
+        - name: EFM_ENCRYPTION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: efm-encryption   # create this if you don't have it yet
+              key: encryption.password
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+```
+
+**Create the encryption secret first** (if you haven’t already):
+
+```bash
+kubectl create secret generic efm-encryption \
+  --from-literal=encryption.password=SuperSecretEFMKey123! \
+  --namespace cld-streaming
+```
+
+Apply it:
+
+```bash
+kubectl apply -f efm-deployment.yaml
+```
+
+### 5. Expose EFM for Easy Access
+
+```bash
+kubectl expose deployment efm --type=NodePort --port=10090 -n cld-streaming
+minikube service efm -n cld-streaming --url
+```
+
+Open that URL in your browser — you should land on the EFM login screen. First login creates the admin account.
+
+### 6. Add EFM to Your CSO Prometheus Observability
+
+Create `efm-servicemonitor.yaml`:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: efm
+  namespace: cld-streaming
+spec:
+  selector:
+    matchLabels:
+      app: efm
+  endpoints:
+  - port: metrics
+    path: /efm/actuator/prometheus
+    interval: 15s
+```
+
+```bash
+kubectl apply -f efm-servicemonitor.yaml
+```
+
+EFM metrics now flow straight into the same Prometheus/Grafana stack you already have for NiFi, Flink, Kafka, and Schema Registry.
 
 ### Deploy MiNiFi C++ Agents from EFM (The Fun Part)
 
