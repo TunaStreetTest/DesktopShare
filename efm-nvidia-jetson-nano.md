@@ -14,7 +14,6 @@ This post directly extends:
 
 Let’s dive in.
 
-
 ### 1. Create the EFM Database & User in Your Existing SSB Postgres
 
 First, find the Postgres pod:
@@ -85,11 +84,19 @@ spec:
         env:
         - name: EF_DB_URL
           value: "jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm"
+        
+        # NiFi Registry Integration (Cross-Namespace Routing)
+        - name: EF_REGISTRY_URL
+          value: "http://nifi-registry-edge-svc.cfm-streaming.svc:18080"
+        - name: EF_REGISTRY_ENABLED
+          value: "true"
+
         # Force the JVM to override the database driver configurations globally
         - name: JAVA_OPTS
           value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
         - name: EF_JAVA_OPTS
           value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
+
         - name: EFM_DB_USER
           value: efm
         - name: EFM_DB_PASSWORD
