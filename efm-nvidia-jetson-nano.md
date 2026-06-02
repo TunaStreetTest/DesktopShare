@@ -83,8 +83,13 @@ spec:
         - containerPort: 10090   # EFM UI / API
         - containerPort: 9092    # Prometheus metrics
         env:
-        - name: EFM_DB_URL
+        - name: EF_DB_URL
           value: "jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm"
+        # Force the JVM to override the database driver configurations globally
+        - name: JAVA_OPTS
+          value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
+        - name: EF_JAVA_OPTS
+          value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
         - name: EFM_DB_USER
           value: efm
         - name: EFM_DB_PASSWORD
@@ -99,11 +104,34 @@ spec:
               key: encryption.password
         resources:
           requests:
-            cpu: "2"
+            cpu: "250m"
             memory: "4Gi"
           limits:
-            cpu: "4"
-            memory: "8Gi"
+            cpu: "250m"
+            memory: "4Gi"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: efm
+  namespace: cld-streaming
+  labels:
+    app: efm
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 10090
+    targetPort: 10090
+    protocol: TCP
+    name: efm-ui
+  - port: 9092
+    targetPort: 9092
+    protocol: TCP
+    name: metrics
+  selector:
+    app: efm
 ```
 
 **Create the encryption secret first** (if you haven’t already):
@@ -124,10 +152,12 @@ kubectl apply -f efm-deployment.yaml
 
 ```bash
 kubectl expose deployment efm --type=NodePort --port=10090 -n cld-streaming
-minikube service efm -n cld-streaming --url
 ```
 
-Open that URL in your browser — you should land on the EFM login screen. First login creates the admin account.
+[http://127.0.0.1:10090/efm/ui](http://127.0.0.1:10090/efm/ui)
+
+
+Open that URL in your browser — you should land on the EFM login screen.
 
 ### 6. Add EFM to Your CSO Prometheus Observability
 
