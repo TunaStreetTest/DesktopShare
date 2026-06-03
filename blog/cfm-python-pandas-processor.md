@@ -1,13 +1,22 @@
-**EXECUTION PLAN: PandasJSONTransformer – NiFi 2.0 Native Python Processor with Pandas**
+**NiFi 2.0 Custom Python Processor with Pandas**
 
-**Starting Point**  
+In this session we are picking up where we left off with [Custom NiFi Processors with Cloudera Streaming Operators](https://cldr-steven-matison.github.io/blog/Custom-Processors-With-Cloudera-Streaming-Operators/) and applying the lessons learned and framework from [How to AI with NiFi and Python](How%20to%20AI%20with%20NiFi%20and%20Python.md) to build a new NiFi 2.0 Custom Python Processor with Pandas.
 
-In this Python Pandas lesson we are picking up where we left off with [Custom NiFi Processors with Cloudera Streaming Operators](https://cldr-steven-matison.github.io/blog/Custom-Processors-With-Cloudera-Streaming-Operators/) and applying the lessons learned and framework from [How to AI with NiFi and Python](How%20to%20AI%20with%20NiFi%20and%20Python.md).
+This session assumes:
 
-Our existing working environment has:  
-- `TransactionGenerator.py` is already placed in the mounted Python extensions directory.  
 - The Cloudera Streaming Operators NiFi CR is applied with the live hostPath volume mount active (minikube mount or equivalent).  
-- Our custom processors appear and run correctly in the NiFi UI.  
+- `TransactionGenerator.py` is placed in the mounted Python extensions directory.  
+- The custom TransactionGenerator processor appears and runs correctly in the NiFi UI.  
+
+This is written as a complete, copy-paste-ready sample that any engineer can drop into a new environment for immediate testing. No changes to the K8s CR, mount, or pod are required to build this new python processor.  Similar steps can be duplicated in any appropriate NiFi 2.0 context.
+
+**Objective**  
+
+Create a new, self-contained native Python processor named **PandasJSONTransformer**:  
+- Accepts JSON content in a FlowFile (e.g. output from TransactionGenerator).  
+- Loads it into a Pandas DataFrame.  
+- Using lon/lat determines distance from home (defined in script).  
+- Outputs the transformed JSON on the `success` relationship.  
 
 Input Flow File:
 
@@ -24,25 +33,13 @@ Input Flow File:
 } ]
 ```
 
-No changes to the K8s CR, mount, or pod are required to build this new python processor.
-
-**Objective**  
-
-Create a new, self-contained native Python processor named **PandasJSONTransformer** that:  
-- Accepts JSON content in a FlowFile (e.g. output from TransactionGenerator).  
-- Loads it into a Pandas DataFrame.  
-- Using lon/lat determines distance from home (defined in script).  
-- Outputs the transformed JSON on the `success` relationship.  
-
-This is written as a complete, copy-paste-ready lesson that any engineer can drop into a new environment for immediate testing.
-
 **Step 1: Create the New Processor File**  
-Navigate to the exact directory where `TransactionGenerator.py` lives (the mounted extensions folder):  
+Navigate to the exact directory where `TransactionGenerator.py` lives:  
 ```bash
 cd ~/nifi-custom-processors   # ← adjust only if your local path is different
 ```
 
-Create the new file `PandasJSONTransformer.py` with the full code below:
+Create the new file `PandasJSONTransformer.py` with the following code:
 
 ```bash
 import json
@@ -118,30 +115,29 @@ class PandasJSONTransformer(FlowFileTransform):
             )
 ```
 
-**Step 2: Deploy & Activate (Live Environment)**  
+**Step 2: Deploy & Activate**  
 
-1. Ensure the minikube mount (or equivalent) is still running:  
-   ```bash
-   minikube mount ~/nifi-custom-processors:/extensions --uid 10001 --gid 10001
-   ```  
-2. NiFi 2.0 automatically detects new/updated `.py` files in the extensions directory (usually within 10–30 seconds).  
-3. When testing python changes, increment the `version` in the code (`1.0.1`) and re-save the file — this forces a clean reload.  
+Ensure the minikube mount is still running:  
+```bash
+minikube mount ~/nifi-custom-processors:/extensions --uid 10001 --gid 10001
+```  
+NiFi 2.0 automatically detects new/updated `.py` files in the extensions directory (usually within 10–30 seconds). When testing python changes, increment the `version` in the code (`1.0.1`) and re-save the file — this forces a clean reload.  If you are impatient you may be refreshing the page to notice new processors.
 
 **Step 3: Verification in NiFi UI**  
 
 - Open NiFi canvas.  
 - Drag a new processor and search for **PandasJSONTransformer**.  
-- It must appear with the exact description and version from the code.  
+- The new processor should appear with the exact description and version from the code.  
 - Simple test flow:  
   `TransactionGenerator` → `PandasJSONTransformer`.   [Flow Definition File](https://raw.githubusercontent.com/cldr-steven-matison/NiFi-Templates/refs/heads/main/CustomPythonProcessorWithPandas.json).
 - Run the flow.  
-- Check output for the new columns `dist_from_home` and `pandas_processed`.
+- Check output flowfile for the new columns `dist_from_home` and `pandas_processed`.
 
-When the processor is first introduced to the canvas it will indicate dependencies are downloading before allowing you to route Success/Failure.
+Be patient on first processor attempt after dragging it to the canvas.  The processor will indicate dependencies are downloading when it is first introduced to the canvas.  The processor must complete this dependency state before allowing you to route Success/Failure.
 
 **Step 4: Hand-Off Framework for Any Other Environment**  
 
-To replicate this exact processor in a different CFM environment:  
+To replicate this exact processor in a different NiFi 2.0 environment:  
 1. Place `PandasJSONTransformer.py` in the Python extensions path.  
 2. Complete the Deployment Steps 1–3 above.  
 3. Verify pandas are installed by NiFi.  
