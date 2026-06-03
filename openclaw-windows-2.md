@@ -69,7 +69,7 @@ chmod +x ~/recreate-minikube-env.sh
 
 ### Phase 2: Prerequisites (WSL2 + NVIDIA + Minikube)
 
-(Added for completeness — you already did most of this)
+Added for context — I have already done most of this in my prev env work.  Your experience may vary here.
 
 ```bash
 # One-time Windows/WSL2 prep
@@ -91,6 +91,7 @@ curl -fsSL https://openclaw.ai/install.sh | bash
 
 Then run:
 ```bash
+openclaw onboard                  # my first time i broke and cancelled
 openclaw onboard --reset          # fresh start
 openclaw onboard --no-verify      # skip some checks if needed
 openclaw gateway start
