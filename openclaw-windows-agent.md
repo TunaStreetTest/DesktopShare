@@ -10,7 +10,7 @@ The goal is for my first **OpenClaw agent** to recreate the full minikube + vLLM
 
 **Script location**: `~/recreate-minikube-env.sh`
 
-This is the **single source of truth** the OpenClaw agent will call whenever it sees a broken cluster or you say “reset environment”.
+This is the **single minikube restart script** the OpenClaw agent will call to “reset environment”.
 
 ```bash
 #!/bin/bash
