@@ -535,11 +535,11 @@ kubectl apply -f vllm-qwen.yaml
 
 You will need to wait for several minutes for the pods to be in running state.  Then it will be a bit more of a wait for Bits and Bytes to finish downloading all of its assets. 
 
-`<font color=green>(EngineCore pid=156) INFO 06-03 15:40:52 [bitsandbytes_loader.py:786] Loading weights with BitsAndBytes quantization. May take a while ...</font>`
+`(EngineCore pid=156) INFO 06-03 15:40:52 [bitsandbytes_loader.py:786] Loading weights with BitsAndBytes quantization. May take a while ...`
 
 Wait for the logs to report the application is running. 
 
-`<font color=green>(APIServer pid=1) INFO:     Application startup complete.</font>`
+`(APIServer pid=1) INFO:     Application startup complete.`
 
 Now you can port forward:
 
