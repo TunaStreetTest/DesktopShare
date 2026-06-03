@@ -41,7 +41,7 @@ Make executable: `chmod +x ~/recreate-minikube-env.sh`
 
 ### Phase 3: Install OpenClaw in WSL2
 
-Recommended quick install (inside Ubuntu):
+Recommended quick install (inside Ubuntu WSL2):
 
 ```bash
 
@@ -57,7 +57,7 @@ Summarize download Telegram windows and phone.  Login phone, login windows.  Mes
 
 During `openclaw onboard`:
 
-
+[ i need to better document the onboarding setting used ]
 
 - **Add API keys** for strong LLM (e.g., OpenAI, Anthropic, or local Ollama with CUDA).
 
@@ -73,13 +73,9 @@ During `openclaw onboard`:
 
 - **Enable sandbox** (Docker-based) cautiously for safe command execution.
 
-
-
-Test the agent: Ask it "Recreate my Minikube environment" and provide context.
-
-
-
 ### Phase 6: OpenClaw Config
+
+AI gave me several different ways to change the config. Many of them were failed with invalid input which effectively broke the openclaw gateway and sometimes requiring doctor --fix.   Manual edits seemed the best in the end, but the test iteration was painful with ai suggesting stuff that didnt work.
 
 cat ~/.openclaw/openclaw.json
 
@@ -344,6 +340,9 @@ cat ~/.openclaw/openclaw.json
 
 ### Phase 7: Installing Qwen OpenAI Compatible Provider for OpenClaw
 
+I went through many ai rounds with Qwen/Qwen2.5-3B-Instruct, Qwen/Qwen2.5-5B-Instruct,  and Qwen/Qwen2.5-7B-Instruct-Awq
+.  In most cases could barely get the model under 8gb of the GPU.  This made it impossible to start.   In this model 32000 finally gives enough headroom for the application to run.
+
 cat vllm-qwen.yaml
 ```bash
 apiVersion: apps/v1
@@ -418,14 +417,14 @@ Apply it
 kubectl apply -f vllm-qwen.yaml
 ```
 
-You will need to wait for several minutes for the pods to be in running state.  Then it will be a bit more wait for Bits and Bites to finish downloading.  Wait for the logs to report the application is running. 
+You will need to wait for several minutes for the pods to be in running state.  Then it will be a bit more of a wait for Bits and Bites to finish downloading all of its assets.  Wait for the logs to report the application is running. 
 
 Now you can port forward:
 
 ```bash
 kubectl port-forward svc/vllm-service 8000:8000 &
 ```
-If your port forward crashes when testing the model,  its not running yet.  Check the pod logs for issues or wait until application is running.
+If your port forward crashes when testing the model,  it's not running yet.  Check the pod logs for issues (not enough memory, gpu, etc) or wait until application is running and try the port forward again.
 
 ### Phase 8: Testing OpenClaw Agent
 
