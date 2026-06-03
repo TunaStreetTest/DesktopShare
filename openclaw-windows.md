@@ -422,7 +422,7 @@ Apply it
 kubectl apply -f vllm-qwen.yaml
 ```
 
-You will need to wait for several minutes for the pods to be in running state.  Then it will be a bit more of a wait for Bits and Bites to finish downloading all of its assets.  Wait for the logs to report the application is running. 
+You will need to wait for several minutes for the pods to be in running state.  Then it will be a bit more of a wait for Bits and Bytes to finish downloading all of its assets.  Wait for the logs to report the application is running. 
 
 Now you can port forward:
 
@@ -444,4 +444,12 @@ In telegram send `/status`:
 ⚙️ Execution: direct · Runtime: OpenClaw Default · Think: off · Fast: off
 🪢 Queue: steer (depth 0)
 
-[ At this point the bot can answer, albeit quite naively, or with wrong answer, or ai slop trying to just respond (3B model - can test 5B now too).  I was not able to get any tools to work in terms of EXEC the actual script.   When i did things like tell it to exec a string,  it seems to mimic that it did.   If i told it to EXEC the script im not even sure it could ever see it.   When i suggested it to ls /home/tunas/  it shows empty dir.  In next sessions need to better understand openclaw permissions and abilities including skills.   Additionally need to think in terms of process so have agent do "process" where process has and is auth to exec a job/script ]
+[ At this point the bot can answer, albeit quite naively, or with wrong answer, or ai slop trying to just respond (3B model - can test 5B now too).  I was not able to get any tools to work in terms of EXEC the actual script.   When i did things like tell it to exec a string echo,  it seems to mimic that it did but did it?   If i told it to EXEC the script I am not even sure it could ever see it.   When i suggested it to ls /home/tunas/  it shows empty dir.  In next sessions need to better understand openclaw permissions and abilities including skills.   Additionally need to think in terms of disconnected process so have agent do "process" where process has and is authed to exec a job/script ]
+
+Further Integration Ideas for Agent Skills
+
+
+Github Repo Automation
+  automate update of test user github.io page.
+X/Grok Posting
+  automate posting on X every time repo content is updated.
