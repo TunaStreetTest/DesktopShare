@@ -13,7 +13,7 @@ minikube delete || true
 minikube start --driver=docker --container-runtime=docker --gpus=all --mount --mount-string="/usr/lib/wsl:/usr/lib/wsl" --force-systemd=true --extra-config=kubelet.cgroup-driver=systemd --cpus=12 --memory=24000
 # Add your deployments, services, etc. here (e.g., kubectl apply -f ...)
 
-kubectl create secret generic hf-token --from-literal=HF_TOKEN="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"
+kubectl create secret generic hf-token --from-literal=HF_TOKEN="HF_TOKEN"
 
 echo "=== Cleaning Up Old Port-Forward Infrastructure ==="
 pkill -f "port-forward" || true
