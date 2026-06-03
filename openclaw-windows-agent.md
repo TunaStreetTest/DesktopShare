@@ -804,16 +804,17 @@ Tools
 Tools
   /btw (/side) - Ask a side question without changing future session context.
   /restart - Restart OpenClaw.
+  /bash [text] - Run host shell commands (host-only).
   /canvas - Present HTML on connected OpenClaw node canvases, navigate/eval/snapshot, and debug canvas host URL…
   /diagram_maker - Create SVG/HTML or Excalidraw diagrams for concepts, architecture, flows, and whiteboards.
   /healthcheck - Audit/harden OpenClaw hosts: SSH, firewall, updates, exposure, backups, disk encryption, gateway se…
   /meme_maker - Search meme templates, suggest formats, and generate local or hosted image memes.
   /node_connect - Diagnose OpenClaw Android, iOS, or macOS node pairing, QR/setup code, route, auth, and connection f…
-  /node_inspect_debugger - Debug Node.js with node inspect, --inspect, breakpoints, CDP, heap, and CPU profiles.
 
 ℹ️ Commands (7/8)
 
 Tools
+  /node_inspect_debugger - Debug Node.js with node inspect, --inspect, breakpoints, CDP, heap, and CPU profiles.
   /notion - Notion CLI/API for pages, Markdown content, data sources, files, comments, search, Workers, and raw…
   /python_debugpy - Debug Python with pdb, breakpoint(), post-mortem inspection, and debugpy remote attach.
   /skill_creator - Create, edit, audit, tidy, validate, or restructure AgentSkills and SKILL.md files.
@@ -821,9 +822,11 @@ Tools
   /taskflow - Coordinate multi-step detached tasks as one durable TaskFlow job with owner context, state, waits, …
   /taskflow_inbox_triage - Example TaskFlow pattern for inbox triage, intent routing, waiting on replies, and later summaries.
   /tmux - Control tmux sessions/panes for interactive CLIs: list, capture output, send keys, paste text, moni…
-  /weather - Current weather and forecasts with wttr.in via curl for locations, rain, temperature, travel planni…
 
 ℹ️ Commands (8/8)
+
+Tools
+  /weather - Current weather and forecasts with wttr.in via curl for locations, rain, temperature, travel planni…
 
 Docks
   /dock_telegram (/dock-telegram) - Switch to telegram for replies.
@@ -832,5 +835,5 @@ Plugins
   /pair (device-pair) - Generate setup codes and approve device pairing requests.
   /dreaming (memory-core) - Enable or disable memory dreaming.
   /phone (phone-control) - Arm/disarm high-risk phone node commands (camera/screen/writes).
-  /voice (talk-voice) - List/set Talk provider voices (affects iOS Talk playback).        
+  /voice (talk-voice) - List/set Talk provider voices (affects iOS Talk playback).
 ```
