@@ -2,7 +2,7 @@
 
 The goal is for my first **OpenClaw agent** to recreate the full minikube + vLLM Qwen2.5-3B (24k context) stack on demand — zero-dollar local tokens, full Kubernetes control, Telegram-first interface. Everything runs inside WSL2 Ubuntu on my Windows desktop for maximum stability and native tool access.
 
-**Required Final Status**: Core stack is working. The agent can now reliably reset the entire environment via `~/recreate-minikube-env.sh`. 
+**Required Final Status**: The agent can now reliably reset the entire environment via `~/recreate-minikube-env.sh`. 
 
 ---
 
@@ -256,10 +256,19 @@ cat ~/.openclaw/openclaw.json
     "lastTouchedAt": "2026-06-02T23:59:58.652Z"
   },
   "commands": {
+    "bash": true,
     "config": true,
     "ownerAllowFrom": [
       "telegram:8541049112"
     ]
+  },
+  "tools": {
+    "elevated": {
+      "enabled": true,
+      "allowFrom": {
+        "telegram": ["8541049112"]
+      }
+    }
   },
   "skills": {
     "entries": {
@@ -396,13 +405,53 @@ cat ~/.openclaw/openclaw.json
   }
 }
 ```
+**!! the big win here was unlocking command `/bash` ,  also `/exec` is not execute.  Thanks AI we are both learning !!**
 
 **Apply changes**:
 ```bash
 openclaw gateway stop && openclaw gateway start
-openclaw doctor --fix
+openclaw doctor --fix # only if you need
 ```
 
+Check Gateway Status
+
+`openclaw gateway status`
+
+```bash
+OpenClaw 2026.5.28 (e932160)
+Less clicking, more shipping, fewer "where did that file go" moments.
+
+│
+◇
+Service: systemd user (enabled)
+File logs: /tmp/openclaw/openclaw-2026-06-03.log
+Command: /home/tunas/.nvm/versions/node/v24.15.0/bin/node /home/tunas/.nvm/versions/node/v24.15.0/lib/node_modules/openclaw/dist/index.js gateway --port 18789
+Service file: ~/.config/systemd/user/openclaw-gateway.service
+Service env: OPENCLAW_GATEWAY_PORT=18789
+
+Service config looks out of date or non-standard.
+Service config issue: Gateway service PATH includes version managers or package managers; recommend a minimal PATH. (/home/tunas/.nvm/versions/node/v24.15.0/bin)
+Service config issue: Gateway service uses Node from a version manager; it can break after upgrades. (/home/tunas/.nvm/versions/node/v24.15.0/bin/node)
+Recommendation: run "openclaw doctor" (or "openclaw doctor --repair").
+Config (cli): ~/.openclaw/openclaw.json
+Config (service): ~/.openclaw/openclaw.json
+
+Gateway: bind=loopback (127.0.0.1), port=18789 (service args)
+Probe target: ws://127.0.0.1:18789
+Dashboard: http://127.0.0.1:18789/
+Probe note: Loopback-only gateway; only local clients can connect.
+
+CLI version: 2026.5.28 (~/.nvm/versions/node/v24.15.0/bin/openclaw)
+Gateway version: 2026.5.28
+
+Runtime: running (pid 42359, state active, sub running, last exit 0, reason 0)
+Connectivity probe: ok
+Capability: connected-no-operator-scope
+
+Listening: 127.0.0.1:18789, [::1]:18789
+Troubles: run openclaw status
+Troubleshooting: https://docs.openclaw.ai/troubleshooting
+```
 ---
 
 ### Phase 7: Installing Qwen OpenAI Compatible Provider for OpenClaw
@@ -512,8 +561,77 @@ In telegram send `/status`:
 ⚙️ Execution: direct · Runtime: OpenClaw Default · Think: off · Fast: off
 🪢 Queue: steer (depth 0)
 
-[ At this point the bot can answer, albeit quite naively, or with wrong answer, or ai slop trying to just respond (3B model - can test 5B now too).  I was not able to get any tools to work in terms of EXEC the actual script.   When i did things like tell it to exec a string echo,  it seems to mimic that it did but did it?   If i told it to EXEC the script I am not even sure it could ever see it.   When i suggested it to ls /home/tunas/  it shows empty dir.  In next sessions need to better understand openclaw permissions and abilities including skills.   Additionally need to think in terms of disconnected process so have agent do "process" where process has and is authed to exec a job/script ]
 
+`/bash  kubectl config current-context`
+
+```bash
+⚙️ bash: kubectl config current-context
+Exit: 0
+
+minikube
+```
+
+`/bash git clone https://github.com/cldr-steven-matison/DesktopShare.git`
+
+```bash
+⚙️ bash: git clone https://github.com/cldr-steven-matison/DesktopShare.git
+Exit: 0
+
+Cloning into 'DesktopShare'...
+```
+
+`/bash cd DesktopShare && ls -al`
+
+```bash
+⚙️ bash: cd DesktopShare && ls -al
+Exit: 0
+
+total 364
+drwxrwxr-x  7 tunas tunas  4096 Jun  3 13:06 .
+drwxr-x--- 29 tunas tunas  4096 Jun  3 13:06 ..
+drwxrwxr-x  8 tunas tunas  4096 Jun  3 13:06 .git
+-rw-rw-r--  1 tunas tunas  7676 Jun  3 13:06 C++-processors.md
+-rw-rw-r--  1 tunas tunas  6975 Jun  3 13:06 Cloudera DataFlow Iceberg CDC Technical Preview.md
+-rw-rw-r--  1 tunas tunas  6454 Jun  3 13:06 How To Install Cloudera Iceberg MCP Server.md
+-rw-rw-r--  1 tunas tunas  3663 Jun  3 13:06 README.md
+-rw-rw-r--  1 tunas tunas  2828 Jun  3 13:06 ai-sources.md
+drwxrwxr-x  2 tunas tunas  4096 Jun  3 13:06 blog
+-rw-rw-r--  1 tunas tunas  6513 Jun  3 13:06 cfm-persisted-volume.md
+-rw-rw-r--  1 tunas tunas  4327 Jun  3 13:06 cloudera-dataflow-cdc-k8s-cdp-pc-iceberg.md
+-rw-rw-r--  1 tunas tunas  2968 Jun  3 13:06 cloudera-dataflow-cdc-k8s.md
+drwxrwxr-x  2 tunas tunas  4096 Jun  3 13:06 completed
+-rw-rw-r--  1 tunas tunas  3082 Jun  3 13:06 csa-airgap.md
+-rw-rw-r--  1 tunas tunas  2875 Jun  3 13:06 csa-persisted-volume.md
+-rw-rw-r--  1 tunas tunas 12555 Jun  3 13:06 cso-argocd.md
+-rw-rw-r--  1 tunas tunas  6578 Jun  3 13:06 cso-minikube-nifi-api-flow-1.md
+-rw-rw-r--  1 tunas tunas  4988 Jun  3 13:06 cso-minikube-nifi-api-flow-2.md
+-rw-rw-r--  1 tunas tunas  2346 Jun  3 13:06 efm-nifi-registry-install.md
+-rw-rw-r--  1 tunas tunas 11328 Jun  3 13:06 efm-nvidia-jetson-nano.md
+drwxrwxr-x  2 tunas tunas  4096 Jun  3 13:06 files
+-rw-rw-r--  1 tunas tunas  5693 Jun  3 13:06 flink-minikube-gpu-working-2.md
+-rw-rw-r--  1 tunas tunas  9829 Jun  3 13:06 flink-minikube-gpu-working.md
+-rw-rw-r--  1 tunas tunas  6523 Jun  3 13:06 grok-nifi-kafka-flink-kubernetes-2.md
+-rw-rw-r--  1 tunas tunas  6923 Jun  3 13:06 grok-nifi-kafka-flink-kubernetes-3.md
+-rw-rw-r--  1 tunas tunas  3843 Jun  3 13:06 grok-nifi-kafka-flink-kubernetes.md
+drwxrwxr-x  2 tunas tunas  4096 Jun  3 13:06 history
+-rw-rw-r--  1 tunas tunas  4818 Jun  3 13:06 nifi-as-an-api.md
+-rw-rw-r--  1 tunas tunas  6421 Jun  3 13:06 nifi-music-alts.md
+-rw-rw-r--  1 tunas tunas  4398 Jun  3 13:06 nifi-music-minifi-tuning.md
+-rw-rw-r--  1 tunas tunas  6708 Jun  3 13:06 nifi-music-sonification.md
+-rw-rw-r--  1 tunas tunas 22939 Jun  3 13:06 nifi-music.md
+-rw-rw-r--  1 tunas tunas  4566 Jun  3 13:06 nipyapi.md
+-rw-rw-r--  1 tunas tunas 21244 Jun  3 13:06 openclaw-windows-agent.md
+-rw-rw-r--  1 tunas tunas  5472 Jun  3 13:06 plan.md
+-rw-rw-r--  1 tunas tunas  9137 Jun  3 13:06 rag-app-plan.md
+-rw-rw-r--  1 tunas tunas  9450 Jun  3 13:06 sample-opensearch-proc.md
+-rw-rw-r--  1 tunas tunas  6448 Jun  3 13:06 spark-versus-cso-1.md
+-rw-rw-r--  1 tunas tunas 15059 Jun  3 13:06 spark2_to_spark3-notebookLM-2.md
+-rw-rw-r--  1 tunas tunas  9091 Jun  3 13:06 spark2_to_spark3-notebookLM.md
+-rw-rw-r--  1 tunas tunas 10216 Jun  3 13:06 spark2_to_spark3.md
+-rw-rw-r--  1 tunas tunas  6806 Jun  3 13:06 top10-k8s-gemini-2026.md
+-rw-rw-r--  1 tunas tunas  3860 Jun  3 13:06 top10-k8s-grok-2026.md
+-rw-rw-r--  1 tunas tunas  4646 Jun  3 13:06 zeppelin.md
+```
 ---
 
 ### Further Integration Ideas for Agent Skills
