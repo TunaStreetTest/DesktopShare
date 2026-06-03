@@ -552,6 +552,7 @@ If your port forward crashes when testing the model,  it's not running yet.  Che
 
 In telegram send `/status`:
 
+```bash
 🦞 OpenClaw 2026.5.28 (e932160)
 ⏱️ Uptime: gateway 6h 21m · system 5d 22h
 🧠 Model: custom-127-0-0-1-8000/Qwen/Qwen2.5-3B-Instruct · 🔑 api-key (models.json)
@@ -560,7 +561,7 @@ In telegram send `/status`:
 🧵 Session: agent:main:telegram:direct:8541049112 • updated just now
 ⚙️ Execution: direct · Runtime: OpenClaw Default · Think: off · Fast: off
 🪢 Queue: steer (depth 0)
-
+```
 
 `/bash  kubectl config current-context`
 
