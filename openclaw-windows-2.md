@@ -135,32 +135,264 @@ During onboarding you set:
 
 ### Phase 6: Final OpenClaw Config (`~/.openclaw/openclaw.json`)
 
-Your current working config (cleaned + commented):
+cat ~/.openclaw/openclaw.json
 
-```json
+```bash
 {
   "agents": {
     "defaults": {
-      "system_instructions": "You are an automated DevOps infrastructure assistant operating inside a WSL2 Ubuntu development environment. You have direct access to a local Minikube cluster via kubectl and docker tool bindings. If you encounter cluster deadlocks, or if the user explicitly requests an environment reset, execute the script ~/recreate-minikube-env.sh. Always verify the deployment state immediately afterward using kubectl get all before reporting back.",
-      "tools": ["exec", "read", "write", "edit", "process"]
+      "workspace": "/home/tunas/.openclaw/workspace",
+      "model": {
+        "primary": "custom-127-0-0-1-8000/Qwen/Qwen2.5-3B-Instruct"
+      },
+      "models": {
+        "custom-127-0-0-1-8000/Qwen/Qwen2.5-3B-Instruct": {
+          "alias": "qwen"
+        }
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "auth": {
+      "mode": "token",
+      "token": "590713cb16618e429a251b8f528631d63134c8a4827211b5"
+    },
+    "port": 18789,
+    "bind": "loopback",
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    },
+    "controlUi": {
+      "allowInsecureAuth": true
+    },
+    "nodes": {
+      "denyCommands": [
+        "camera.snap",
+        "camera.clip",
+        "screen.record",
+        "contacts.add",
+        "calendar.add",
+        "reminders.add",
+        "sms.send",
+        "sms.search"
+      ]
+    }
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "tools": {
+    "profile": "coding",
+     "exec": {
+      "host": "auto"
+    },
+    "web": {
+      "search": {
+        "provider": "duckduckgo",
+        "enabled": true
+      }
     }
   },
   "models": {
-    "defaults": {
-      "max_tokens": 1024
+    "mode": "merge",
+    "providers": {
+      "custom-127-0-0-1-8000": {
+        "baseUrl": "http://127.0.0.1:8000/v1",
+        "api": "openai-completions",
+        "apiKey": "none",
+        "models": [
+          {
+            "id": "Qwen/Qwen2.5-3B-Instruct",
+            "name": "Qwen/Qwen2.5-3B-Instruct (Custom Provider)",
+            "contextWindow": 128000,
+            "maxTokens": 8192,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "reasoning": false
+          }
+        ]
+      }
     }
+  },
+  "plugins": {
+    "entries": {
+      "telegram": {
+        "enabled": true
+      },
+      "duckduckgo": {
+        "enabled": true
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "groups": {
+        "*": {
+          "requireMention": true
+        }
+      },
+      "botToken": "8511465033:AAEWa8Xt10luM9c-b2DVxaA6xozrTEN09oI"
+    }
+  },
+  "wizard": {
+    "lastRunAt": "2026-06-02T23:55:37.408Z",
+    "lastRunVersion": "2026.5.28",
+    "lastRunCommand": "doctor",
+    "lastRunMode": "local"
+  },
+  "meta": {
+    "lastTouchedVersion": "2026.5.28",
+    "lastTouchedAt": "2026-06-02T23:59:58.652Z"
   },
   "commands": {
-    "config": true
+    "config": true,
+    "ownerAllowFrom": [
+      "telegram:8541049112"
+    ]
   },
-  "tools": {
-    "profile": "full",
-    "exec": {
-      "security": "full",
-      "ask": "off"
+  "skills": {
+    "entries": {
+      "1password": {
+        "enabled": false
+      },
+      "apple-notes": {
+        "enabled": false
+      },
+      "apple-reminders": {
+        "enabled": false
+      },
+      "bear-notes": {
+        "enabled": false
+      },
+      "blogwatcher": {
+        "enabled": false
+      },
+      "blucli": {
+        "enabled": false
+      },
+      "camsnap": {
+        "enabled": false
+      },
+      "clawhub": {
+        "enabled": false
+      },
+      "coding-agent": {
+        "enabled": false
+      },
+      "discord": {
+        "enabled": false
+      },
+      "eightctl": {
+        "enabled": false
+      },
+      "gemini": {
+        "enabled": false
+      },
+      "gh-issues": {
+        "enabled": false
+      },
+      "gifgrep": {
+        "enabled": false
+      },
+      "github": {
+        "enabled": false
+      },
+      "gog": {
+        "enabled": false
+      },
+      "goplaces": {
+        "enabled": false
+      },
+      "himalaya": {
+        "enabled": false
+      },
+      "imsg": {
+        "enabled": false
+      },
+      "mcporter": {
+        "enabled": false
+      },
+      "model-usage": {
+        "enabled": false
+      },
+      "nano-pdf": {
+        "enabled": false
+      },
+      "obsidian": {
+        "enabled": false
+      },
+      "openai-whisper": {
+        "enabled": false
+      },
+      "openai-whisper-api": {
+        "enabled": false
+      },
+      "openhue": {
+        "enabled": false
+      },
+      "oracle": {
+        "enabled": false
+      },
+      "ordercli": {
+        "enabled": false
+      },
+      "peekaboo": {
+        "enabled": false
+      },
+      "sag": {
+        "enabled": false
+      },
+      "session-logs": {
+        "enabled": false
+      },
+      "sherpa-onnx-tts": {
+        "enabled": false
+      },
+      "slack": {
+        "enabled": false
+      },
+      "songsee": {
+        "enabled": false
+      },
+      "sonoscli": {
+        "enabled": false
+      },
+      "spotify-player": {
+        "enabled": false
+      },
+      "summarize": {
+        "enabled": false
+      },
+      "things-mac": {
+        "enabled": false
+      },
+      "trello": {
+        "enabled": false
+      },
+      "video-frames": {
+        "enabled": false
+      },
+      "voice-call": {
+        "enabled": false
+      },
+      "wacli": {
+        "enabled": false
+      },
+      "xurl": {
+        "enabled": false
+      }
     }
-  },
-  // ... rest of your providers, telegram, etc. (keep exactly as-is)
+  }
 }
 ```
 
@@ -171,6 +403,119 @@ openclaw doctor --fix
 ```
 
 ---
+
+### Phase 7: Installing Qwen OpenAI Compatible Provider for OpenClaw
+
+[ I went through many ai rounds with Qwen/Qwen2.5-3B-Instruct, Qwen/Qwen2.5-5B-Instruct,  and Qwen/Qwen2.5-7B-Instruct-Awq
+.  In most cases could barely get the model under 8gb of the GPU.  This made it impossible to start.   In this model 32000 finally gives enough headroom for the application to run. ]
+
+cat vllm-qwen.yaml
+```bash
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-server
+  template:
+    metadata:
+      labels:
+        app: vllm-server
+    spec:
+      serviceAccountName: vllm-server
+      containers:
+      - name: vllm-server
+        image: vllm/vllm-openai:latest
+        env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token
+              key: HF_TOKEN
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+        args:
+        - "Qwen/Qwen2.5-3B-Instruct"
+        - "--quantization"
+        - "bitsandbytes"
+        - "--load-format"
+        - "bitsandbytes"
+        - "--gpu-memory-utilization"
+        - "0.75"
+        - "--max-model-len"
+        - "32000"
+        - "--enable-chunked-prefill"
+        - "--enforce-eager"
+        - "--enable-auto-tool-choice"
+        - "--tool-call-parser"
+        - "qwen3_coder"
+        volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+      volumes:
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-service
+  namespace: default
+spec:
+  selector:
+    app: vllm-server
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP  # or NodePort/LoadBalancer if you want external access
+```
+
+Apply it
+
+```bash
+kubectl apply -f vllm-qwen.yaml
+```
+
+You will need to wait for several minutes for the pods to be in running state.  Then it will be a bit more of a wait for Bits and Bytes to finish downloading all of its assets.  Wait for the logs to report the application is running. 
+
+Now you can port forward:
+
+```bash
+kubectl port-forward svc/vllm-service 8000:8000 &
+```
+If your port forward crashes when testing the model,  it's not running yet.  Check the pod logs for issues (not enough memory, gpu, etc) or wait until application is running and try the port forward again.
+
+### Phase 8: Testing OpenClaw Agent
+
+In telegram send `/status`:
+
+🦞 OpenClaw 2026.5.28 (e932160)
+⏱️ Uptime: gateway 6h 21m · system 5d 22h
+🧠 Model: custom-127-0-0-1-8000/Qwen/Qwen2.5-3B-Instruct · 🔑 api-key (models.json)
+🧮 Tokens: 15k in / 45 out · 💵 Cost: $0.0000
+📚 Context: 15k/128k (11%) · 🧹 Compactions: 0
+🧵 Session: agent:main:telegram:direct:8541049112 • updated just now
+⚙️ Execution: direct · Runtime: OpenClaw Default · Think: off · Fast: off
+🪢 Queue: steer (depth 0)
+
+[ At this point the bot can answer, albeit quite naively, or with wrong answer, or ai slop trying to just respond (3B model - can test 5B now too).  I was not able to get any tools to work in terms of EXEC the actual script.   When i did things like tell it to exec a string echo,  it seems to mimic that it did but did it?   If i told it to EXEC the script I am not even sure it could ever see it.   When i suggested it to ls /home/tunas/  it shows empty dir.  In next sessions need to better understand openclaw permissions and abilities including skills.   Additionally need to think in terms of disconnected process so have agent do "process" where process has and is authed to exec a job/script ]
+
+Further Integration Ideas for Agent Skills
+
+
+Github Repo Automation
+  automate update of test user github.io page.
+X/Grok Posting
+  automate posting on X every time repo content is updated.
+
+
 
 ### Appendix: Day 1 Terminal History Summary (Cleaned & Organized)
 
@@ -225,13 +570,3 @@ kubectl create clusterrolebinding vllm-server-admin --clusterrole=cluster-admin 
 ```
 
 ---
-
-**Next steps?**  
-Tell me which part you want to attack first:
-- Make the recreate script even smarter (auto-detect GPU, better health checks, etc.)
-- Add a full `vllm-qwen.yaml` example to the repo
-- Improve the agent’s system prompt so it’s rock-solid
-- Add a “health check” command the agent can run automatically
-- Or something else
-
-I’m ready when you are. This doc is now **production-grade**. Let’s keep leveling it up. 🚀
