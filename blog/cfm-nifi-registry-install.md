@@ -75,19 +75,3 @@ kubectl get svc nifi-registry-edge-svc -n cfm-streaming
 http://127.0.0.1:18080/nifi-registry/
 
 ```
-
-
-2. Click the **Settings icon (wrench)** in the top right corner.
-3. Click **New Bucket**.
-4. Name the bucket exactly: **`MiNiFiFlows`**
-
-## 6. Update EFM Properties
-
-Link your Edge Flow Manager (EFM) container instance directly to the new registry using its internal, high-speed cluster DNS network route:
-
-```ini
-efm.nifi.registry.enabled=true
-efm.nifi.registry.url=http://nifi-registry-edge-svc.cfm-streaming.svc.cluster.local:18080
-efm.nifi.registry.bucketName=MiNiFiFlows
-
-```
