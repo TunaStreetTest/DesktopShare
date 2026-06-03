@@ -570,5 +570,143 @@ kubectl create secret generic hf-token-secret --from-literal=HF_TOKEN="..."
 kubectl create serviceaccount vllm-server
 kubectl create clusterrolebinding vllm-server-admin --clusterrole=cluster-admin --serviceaccount=default:vllm-server
 ```
-
 ---
+
+### Appendix: Basic OpenClaw Agent Commands
+
+`/status`
+
+```bash
+🦞 OpenClaw 2026.5.28 (e932160)
+⏱️ Uptime: gateway 10h 19m · system 6d 2h
+🧠 Model: custom-127-0-0-1-8000/Qwen/Qwen2.5-3B-Instruct · 🔑 api-key (models.json)
+🧮 Tokens: 15k in / 54 out · 💵 Cost: $0.0000
+📚 Context: 15k/128k (12%) · 🧹 Compactions: 0
+🧵 Session: agent:main:telegram:direct:8541049112 • updated just now
+⚙️ Execution: direct · Runtime: OpenClaw Default · Think: off · Fast: off
+🪢 Queue: steer (depth 0)
+```
+
+`/tools compact`
+
+```bash
+Available tools
+
+Profile: coding
+
+Built-in tools
+cron, edit, exec, process, read, sessions_history, sessions_send, session_status, sessions_list, sessions_spawn, subagents, update_plan, web_fetch, web_search, write, sessions_yield
+
+Connected tools
+memory_get (memory-core), memory_search (memory-core)
+
+Use /tools verbose for descriptions.
+```
+
+
+`/commands`
+
+```bash
+ℹ️ Commands (1/8)
+
+Session
+  /session - Manage session-level settings (for example /session idle).
+  /stop - Stop the current run.
+  /reset - Reset the current session.
+  /new - Start a new session.
+  /compact - Compact the session context.
+
+Options
+  /usage - Usage footer or cost summary.
+  /think (/thinking, /t) - Set thinking level.
+  /verbose (/v) - Toggle verbose mode.
+
+ℹ️ Commands (2/8)
+
+Options
+  /trace - Toggle plugin trace lines.
+  /fast - Toggle fast mode.
+  /reasoning (/reason) - Toggle reasoning visibility.
+  /elevated (/elev) - Toggle elevated mode.
+  /exec - Set exec defaults for this session.
+  /model - Show or set the model.
+  /models - List model providers/models.
+  /queue - Adjust queue settings.
+
+ℹ️ Commands (3/8)
+
+Status
+  /help - Show available commands.
+  /commands - List all slash commands.
+  /tools - List available runtime tools.
+  /status - Show current status.
+  /diagnostics - Explain Gateway diagnostics and Codex feedback upload options.
+  /tasks - List background tasks for this session.
+  /context - Explain how context is built and used.
+  /export-session (/export) - Export current session to HTML file with full system prompt.
+
+ℹ️ Commands (4/8)
+
+Status
+  /export-trajectory (/trajectory) - Export a JSONL trajectory bundle for the active session.
+  /whoami (/id) - Show your sender id.
+
+Management
+  /crestodian [text] - Run the Crestodian setup and repair helper.
+  /allowlist [text] - List/add/remove allowlist entries.
+  /approve - Approve or deny exec requests.
+  /subagents - Inspect subagent runs for this session.
+  /acp - Manage ACP sessions and runtime options.
+  /focus - Bind this thread (Discord) or topic/conversation (Telegram) to a session target.
+
+ℹ️ Commands (5/8)
+
+Management
+  /unfocus - Remove the current thread (Discord) or topic/conversation (Telegram) binding.
+  /agents - List thread-bound agents for this session.
+  /steer (/tell) - Send guidance to the active run in this session.
+  /config - Show or set config values.
+  /activation - Set group activation mode.
+  /send - Set send policy.
+
+Media
+  /tts - Control text-to-speech (TTS).
+
+Tools
+  /skill - Run a skill by name.
+
+ℹ️ Commands (6/8)
+
+Tools
+  /btw (/side) - Ask a side question without changing future session context.
+  /restart - Restart OpenClaw.
+  /canvas - Present HTML on connected OpenClaw node canvases, navigate/eval/snapshot, and debug canvas host URL…
+  /diagram_maker - Create SVG/HTML or Excalidraw diagrams for concepts, architecture, flows, and whiteboards.
+  /healthcheck - Audit/harden OpenClaw hosts: SSH, firewall, updates, exposure, backups, disk encryption, gateway se…
+  /meme_maker - Search meme templates, suggest formats, and generate local or hosted image memes.
+  /node_connect - Diagnose OpenClaw Android, iOS, or macOS node pairing, QR/setup code, route, auth, and connection f…
+  /node_inspect_debugger - Debug Node.js with node inspect, --inspect, breakpoints, CDP, heap, and CPU profiles.
+
+ℹ️ Commands (7/8)
+
+Tools
+  /notion - Notion CLI/API for pages, Markdown content, data sources, files, comments, search, Workers, and raw…
+  /python_debugpy - Debug Python with pdb, breakpoint(), post-mortem inspection, and debugpy remote attach.
+  /skill_creator - Create, edit, audit, tidy, validate, or restructure AgentSkills and SKILL.md files.
+  /spike - Run throwaway prototypes to validate feasibility, compare approaches, and report a verdict.
+  /taskflow - Coordinate multi-step detached tasks as one durable TaskFlow job with owner context, state, waits, …
+  /taskflow_inbox_triage - Example TaskFlow pattern for inbox triage, intent routing, waiting on replies, and later summaries.
+  /tmux - Control tmux sessions/panes for interactive CLIs: list, capture output, send keys, paste text, moni…
+  /weather - Current weather and forecasts with wttr.in via curl for locations, rain, temperature, travel planni…
+
+ℹ️ Commands (8/8)
+
+Docks
+  /dock_telegram (/dock-telegram) - Switch to telegram for replies.
+
+Plugins
+  /pair (device-pair) - Generate setup codes and approve device pairing requests.
+  /dreaming (memory-core) - Enable or disable memory dreaming.
+  /phone (phone-control) - Arm/disarm high-risk phone node commands (camera/screen/writes).
+  /voice (talk-voice) - List/set Talk provider voices (affects iOS Talk playback).        
+```
