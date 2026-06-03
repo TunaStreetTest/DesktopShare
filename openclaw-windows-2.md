@@ -2,7 +2,7 @@
 
 The goal is for my first **OpenClaw agent** to recreate the full minikube + vLLM Qwen2.5-3B (24k context) stack on demand — zero-dollar local tokens, full Kubernetes control, Telegram-first interface. Everything runs inside WSL2 Ubuntu on my Windows desktop for maximum stability and native tool access.
 
-**Status**: Core stack is working. The agent can now reliably reset the entire environment via `~/recreate-minikube-env.sh`.
+**Required Final Status**: Core stack is working. The agent can now reliably reset the entire environment via `~/recreate-minikube-env.sh`. 
 
 ---
 
