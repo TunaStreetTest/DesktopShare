@@ -484,7 +484,13 @@ Apply it
 kubectl apply -f vllm-qwen.yaml
 ```
 
-You will need to wait for several minutes for the pods to be in running state.  Then it will be a bit more of a wait for Bits and Bytes to finish downloading all of its assets.  Wait for the logs to report the application is running. 
+You will need to wait for several minutes for the pods to be in running state.  Then it will be a bit more of a wait for Bits and Bytes to finish downloading all of its assets. 
+
+`<font color=green>(EngineCore pid=156) INFO 06-03 15:40:52 [bitsandbytes_loader.py:786] Loading weights with BitsAndBytes quantization. May take a while ...</font>`
+
+Wait for the logs to report the application is running. 
+
+`<font color=green>(APIServer pid=1) INFO:     Application startup complete.</font>`
 
 Now you can port forward:
 
@@ -566,7 +572,7 @@ openclaw pairing approve telegram J7LMQY9F
 openclaw logs --follow
 pkill -f "port-forward"
 nvidia-smi
-kubectl create secret generic hf-token-secret --from-literal=HF_TOKEN="..."
+kubectl create secret generic hf-token --from-literal=HF_TOKEN="..."
 kubectl create serviceaccount vllm-server
 kubectl create clusterrolebinding vllm-server-admin --clusterrole=cluster-admin --serviceaccount=default:vllm-server
 ```
