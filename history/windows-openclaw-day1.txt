@@ -1,0 +1,200 @@
+1766  k9s
+ 1767  openclaw skills list --verbose
+ 1768  nano vllm-qwen.yaml
+ 1769  kubectl apply -f vllm-qwen.yaml
+ 1770  kubectl delete -f vllm-qwen.yaml
+
+ 1772  openclaw channels status --probe
+ 1773  openclaw pairing approve telegram J7LMQY9F
+ 1774  kubectl get pod -l app=vllm-server -o wide
+ 1775  curl http://127.0.0.1:8000/v1/models
+ 1776  nano vllm-qwen.yaml
+ 
+ 1783  kubectl logs deployment/vllm-server --tail=50
+ 1784  nano ~/.openclaw/openclaw.json
+ 1785  openclaw config schema | grep -A 20 "agents"
+
+ 1789  kubectl logs deployment/vllm-server --follow
+ 
+ 1801  nano recreate-minikube-env.sh
+ 
+ 1806  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+ 1807  sudo apt-get install build-essential
+ 1808  brew install gcc
+ 
+
+ 1812  kubectl create secret secret-generic hf-token-secret --from-literal=HF_TOKEN="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"
+
+ 
+ 1816  kubectl describe pod vllm-server-77cfd65c96-hjmzt
+
+ 1818  nano recreate-minikube-env.sh
+ 1819  ~/recreate-minikube-env.sh
+ 1841  chmod +x ~/recreate-minikube-env.sh
+
+
+ 1826  kubectl port-forward svc/vllm-service 8000:8000 &
+ 
+ 1836  systemctl --user status
+ 1837  nvidia-smi
+ 1838  docker run --rm --gpus all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi
+ 
+
+ 1842  curl -fsSL https://openclaw.ai/install.sh | bash
+ 1843  openclaw onboard --reset
+ 1844  openclaw onboard --no-verify
+ 1845  openclaw onboard --reset
+ 1846  openclaw gateway start
+ 1847  openclaw tui
+ 1848  openclaw config set commands.config true && openclaw config set agents.main.tools.allow '["exec", "read", "write", "edit", "process"]' --strict-json
+
+ 1861  python3 -c '
+ 1862  import json, os
+ 1863  path = os.path.expanduser("~/.openclaw/openclaw.json")
+ 1864  with open(path, "r") as f: data = json.load(f)
+ 1865  # Ensure the keys exist and assign the tool rights cleanly
+ 1866  if "agents" not in data: data["agents"] = {}
+ 1867  if "main" not in data: data["main"] = {}
+ 1868  data["agents"]["main"]["tools"] = {"allow": ["exec", "read", "write", "edit", "process"]}
+ 1869  data["commands"] = {"config": True}
+ 1870  with open(path, "w") as f: json.dump(data, f, indent=2)
+ 1871  print("--- Configuration File Cleanly Patched! ---")
+ 1872  '
+ 1873  python3 -c '
+ 1874  import json, os
+ 1875  path = os.path.expanduser("~/.openclaw/openclaw.json")
+ 1876  with open(path, "r") as f: data = json.load(f)
+ 1877  # OpenClaw tracks agent settings inside the global defaults block
+ 1878  if "agents" not in data: data["agents"] = {}
+ 1879  if "defaults" not in data: data["agents"]["defaults"] = {}
+ 1880  # Inject the allowed host administrative tools safely
+ 1881  data["agents"]["defaults"]["tools"] = ["exec", "read", "write", "edit", "process"]
+ 1882  # Enable the TUI configuration controls
+ 1883  if "commands" not in data: data["commands"] = {}
+ 1884  data["commands"]["config"] = True
+ 1885  with open(path, "w") as f: json.dump(data, f, indent=2)
+ 1886  print("--- Configuration File Successfully Patched! ---")
+ 1887  '
+ 1888  openclaw gateway stop && openclaw gateway start
+ 1889  openclaw doctor --fix
+ 1890  openclaw gateway start
+ 1891  openclaw tui
+ 1892  openclaw gateway stop && openclaw gateway start
+ 1893  openclaw doctor --fix
+ 1894  openclaw gateway stop && openclaw gateway start
+ 1895  openclaw config set sessions.default.reserve_tokens 2000
+ 1896  openclaw doctor --fix
+ 1897  openclaw gateway stop && openclaw gateway start
+ 1898  python3 -c '
+ 1899  import json, os
+ 1900  path = os.path.expanduser("~/.openclaw/openclaw.json")
+ 1901  with open(path, "r") as f: data = json.load(f)
+ 1902  # Ensure the models configuration block exists
+ 1903  if "models" not in data: data["models"] = {}
+ 1904  if "defaults" not in data: data["models"]["defaults"] = {}
+ 1905  # Force OpenClaw to only request up to 1024 tokens for responses
+ 1906  data["models"]["defaults"]["max_tokens"] = 1024
+ 1907  with open(path, "w") as f: json.dump(data, f, indent=2)
+ 1908  print("--- OpenClaw Output Limit Set to 1024 Tokens! ---")
+ 1909  '
+ 1910  openclaw gateway stop && openclaw gateway start
+ 1911  openclaw doctor --fix
+ 1912  openclaw gateway stop && openclaw gateway start
+
+ 1915  kubectl port-forward deployment/vllm-server 8000:8000
+ 1916  curl http://localhost:8000/v1/models
+ 1917  kubectl logs vllm-server-5dbb7c6d7d-hhqc6 --tail=50
+
+
+ 1925  openclaw config
+ 1926  openclaw config set agents.defaults.system_instructions "You are an automated DevOps infrastructure assistant operating inside a WSL2 Ubuntu development environment. You have direct access to a local Minikube cluster via kubectl and docker tool bindings. If you encounter cluster deadlocks, or if the user explicitly requests an environment reset, execute the script ~/recreate-minikube-env.sh. Always verify the deployment state immediately afterward using kubectl get all before reporting back."
+ 1927  cat << 'EOF' > ~/.openclaw_profile
+ 1928  # DevOps Core Instructions
+ 1929  export OPENCLAW_SYSTEM_PROMPT="You are an automated DevOps infrastructure assistant operating inside a WSL2 Ubuntu development environment. You have direct access to a local Minikube cluster via kubectl and docker tool bindings. If you encounter cluster deadlocks, or if the user explicitly requests an environment reset, execute the script ~/recreate-minikube-env.sh. Always verify the deployment state immediately afterward using kubectl get all before reporting back."
+ 1930  EOF
+ 1931  echo 'source ~/.openclaw_profile' >> ~/.bashrc
+ 1932  source ~/.bashrc
+ 1933  openclaw gateway stop && openclaw gateway start
+
+ 1935  openclaw logs --follow
+ 1936  openclaw gateway stop && openclaw gateway start
+ 1937  openclaw doctor --fix
+ 1938  openclaw gateway stop && openclaw gateway start
+ 1939  openclaw tools list
+ 1940  openclaw logs --follow
+ 1941  openclaw gateway stop && openclaw gateway start
+ 1942  openclaw logs --follow
+ 1943  
+ 1955  pkill -f "port-forward"
+ 
+ 1968  ~/recreate-minikube-env.sh
+ 1969  kubectl get pods -l app=vllm-server
+ 1970  kubectl describe pod -l app=vllm-server
+ 1971  kubectl logs -l app=vllm-server --tail=50
+ 1972  kubectl describe pod vllm-server-c94846ccc-j28w7
+ 1973  minikube ssh "docker images | grep vllm"
+ 1974  kubectl describe pod vllm-server-c94846ccc-j28w7
+ 1975  kubectl logs -l app=vllm-server --tail=50
+ 1976  kubectl describe pod vllm-server-c94846ccc-j28w7
+ 1977  kubectl logs -l app=vllm-server --tail=50
+ 1978  cat recreate-minikube-env.sh
+ 1979  kubectl port-forward deployment/vllm-server 8000:8000 > /dev/null 2>&1 &
+ 1980  curl -i http://localhost:8000/health
+ 1981  kubectl logs deployment/vllm-server --tail=50
+ 1982  kubectl port-forward deployment/vllm-server 8000:8000 > /dev/null 2>&1 &
+ 1983  curl -i http://localhost:8000/health
+ 1984  openclaw tui
+ 1985  openclaw config patch '{"tools": {"profile": "full", "exec": {"security": "full", "ask": "off"}}}'
+
+ 1987  nano ~/.openclaw/openclaw.json
+
+ 2015  cp vllm-qwen.yaml vllm-qwen.broken.yaml
+ 2016  nano vllm-qwen-claw.yaml
+ 2017  kubectl delete -f vllm-qwen.yaml
+ 2018  kubectl apply -f vllm-qwen-claw.yaml
+ 2019  kubectl get pod vllm-server-5dbb7c6d7d-hhqc6 -o wide
+ 2020  curl http://localhost:8000/v1/models
+ 2021  kubectl port-forward pod/vllm-server-5dbb7c6d7d-hhqc6 8000:8000
+ 2022  curl http://localhost:8000/v1/models
+ 2023  kubectl port-forward pod/vllm-server-5dbb7c6d7d-hhqc6 8000:8000
+ 2024  nano vllm-qwen-claw.yaml
+ 2025  kubectl delete -f vllm-qwen-claw.yaml
+ 2026  kubectl apply -f vllm-qwen-claw.yaml
+ 2027 
+ 2043  kubectl port-forward pod/vllm-server-5dbb7c6d7d-hhqc6 8000:8000
+ 2044 
+ 2045  kubectl port-forward deployment/vllm-server 8000:8000 > /dev/null 2>&1 &
+ 2046  
+ 2048  kubectl port-forward deployment/vllm-server 8000:8000
+ 
+ 2110  openclaw config validate
+ 2111  openclaw gateway restart
+ 2112  openclaw config validate
+ 2113  openclaw gateway restart
+ 2114  openclaw exec-policy allow --all --path /
+ 2115  openclaw exec-policy preset yolo
+ 2116  openclaw config validate
+ 2117  openclaw exec-policy preset yolo
+ 2118  openclaw exec-policy set --mode full --ask-off
+ 2119  openclaw exec-policy show
+ 2120  openclaw gateway restart
+ 2121  openclaw approvals set --stdin <<'EOF'
+{
+  "version": 1,
+  "defaults": {
+    "security": "full",
+    "ask": "off",
+    "askFallback": "full"
+  }
+}
+EOF
+
+ 2122  openclaw approvals get
+ 
+ 2130  kubectl get sa vllm-server -o yaml
+ 2131  kubectl create serviceaccount vllm-server
+ 2132  kubectl create clusterrolebinding vllm-server-admin   --clusterrole=cluster-admin   --serviceaccount=default:vllm-server
+ 2133  kubectl apply -f vllm-deployment.yaml
+ 2137  kubectl delete pod -l app=vllm-server --grace-period=0 --force
+ 2138  kubectl delete -f vllm-qwen.yaml
+ 2139  kubectl apply -f vllm-qwen.yaml
