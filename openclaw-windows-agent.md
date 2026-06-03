@@ -508,15 +508,16 @@ In telegram send `/status`:
 
 [ At this point the bot can answer, albeit quite naively, or with wrong answer, or ai slop trying to just respond (3B model - can test 5B now too).  I was not able to get any tools to work in terms of EXEC the actual script.   When i did things like tell it to exec a string echo,  it seems to mimic that it did but did it?   If i told it to EXEC the script I am not even sure it could ever see it.   When i suggested it to ls /home/tunas/  it shows empty dir.  In next sessions need to better understand openclaw permissions and abilities including skills.   Additionally need to think in terms of disconnected process so have agent do "process" where process has and is authed to exec a job/script ]
 
-Further Integration Ideas for Agent Skills
+---
 
+### Further Integration Ideas for Agent Skills
 
-Github Repo Automation
-  automate update of test user github.io page.
-X/Grok Posting
-  automate posting on X every time repo content is updated.
+- Github Repo Automation
+- Automate update of test user github.io page.
+- X/Grok Posting
+- Automate posting on X every time repo content is updated.
 
-
+---
 
 ### Appendix: Day 1 Terminal History Summary (Cleaned & Organized)
 
