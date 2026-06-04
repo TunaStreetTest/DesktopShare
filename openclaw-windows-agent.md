@@ -61,11 +61,11 @@ Make it executable:
 chmod +x ~/recreate-minikube-env.sh
 ```
 
-**Pro tip from Day 1**: The first time these things run 4-6+ minute timeouts are real. The script now includes better waiting logic and secret handling so the agent can run it safely without manual intervention, but it usually timesout.  In further steps some of the helm commands are lengthy too the first time.  After a first run redoing the setup is much quicker.
+**Pro tip from Day 1**: The first time these things run 4-6+ minute timeouts are real. The script now includes better waiting logic and secret handling so the agent can run it safely without manual intervention, but it usually times out. It's okay it does finish. In further steps some of the helm commands are lengthy too the first time they are proposed to an env.  After a first run redoing the setup is much quicker.
 
 ---
 
-### Phase 2: Prerequisites (WSL2 + NVIDIA + Minikube)
+### Phase 2: Prerequisites (WSL2 + NVIDIA GPU + Minikube)
 
 Added for context — I have already done most of this in my prev env work.  Your experience may vary here.
 
@@ -78,6 +78,7 @@ brew install gcc
 nvidia-smi
 docker run --rm --gpus all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi
 ```
+**See Resources Below** for backing blog posts with all of the setup instructions. 
 
 ---
 
@@ -403,7 +404,7 @@ cat ~/.openclaw/openclaw.json
   }
 }
 ```
-**!! the big win here was unlocking command `/bash` ,  also `/exec` is not execute.  Thanks AI we are both learning !!**
+**!! the big win here was unlocking command `/bash`** ,  also `/exec` is not execute.  Thanks AI we are both learning!!
 
 **Apply changes**:
 ```bash
@@ -457,7 +458,8 @@ Troubleshooting: https://docs.openclaw.ai/troubleshooting
 [ I went through many ai rounds with Qwen/Qwen2.5-3B-Instruct, Qwen/Qwen2.5-5B-Instruct,  and Qwen/Qwen2.5-7B-Instruct-Awq
 .  In most cases could barely get the model under 8gb of the GPU.  This made it impossible to start.   In this model 32000 finally gives enough headroom for the application to run. ]
 
-cat vllm-qwen.yaml
+`cat vllm-qwen.yaml`
+
 ```bash
 apiVersion: apps/v1
 kind: Deployment
@@ -544,7 +546,8 @@ Now you can port forward:
 ```bash
 kubectl port-forward svc/vllm-service 8000:8000 &
 ```
-If your port forward crashes when testing the model,  it's not running yet.  Check the pod logs for issues (not enough memory, gpu, etc) or wait until application is running and try the port forward again.
+
+**If your port forward crashes when testing the model**  it's not running yet.  Check the pod logs for issues (not enough memory, gpu, etc) or wait until application is running and try the port forward again.
 
 ### Phase 8: Testing OpenClaw Agent
 
@@ -589,56 +592,11 @@ total 364
 drwxrwxr-x  7 tunas tunas  4096 Jun  3 13:06 .
 drwxr-x--- 29 tunas tunas  4096 Jun  3 13:06 ..
 drwxrwxr-x  8 tunas tunas  4096 Jun  3 13:06 .git
--rw-rw-r--  1 tunas tunas  7676 Jun  3 13:06 C++-processors.md
--rw-rw-r--  1 tunas tunas  6975 Jun  3 13:06 Cloudera DataFlow Iceberg CDC Technical Preview.md
--rw-rw-r--  1 tunas tunas  6454 Jun  3 13:06 How To Install Cloudera Iceberg MCP Server.md
--rw-rw-r--  1 tunas tunas  3663 Jun  3 13:06 README.md
--rw-rw-r--  1 tunas tunas  2828 Jun  3 13:06 ai-sources.md
-drwxrwxr-x  2 tunas tunas  4096 Jun  3 13:06 blog
--rw-rw-r--  1 tunas tunas  6513 Jun  3 13:06 cfm-persisted-volume.md
--rw-rw-r--  1 tunas tunas  4327 Jun  3 13:06 cloudera-dataflow-cdc-k8s-cdp-pc-iceberg.md
--rw-rw-r--  1 tunas tunas  2968 Jun  3 13:06 cloudera-dataflow-cdc-k8s.md
-drwxrwxr-x  2 tunas tunas  4096 Jun  3 13:06 completed
--rw-rw-r--  1 tunas tunas  3082 Jun  3 13:06 csa-airgap.md
--rw-rw-r--  1 tunas tunas  2875 Jun  3 13:06 csa-persisted-volume.md
--rw-rw-r--  1 tunas tunas 12555 Jun  3 13:06 cso-argocd.md
--rw-rw-r--  1 tunas tunas  6578 Jun  3 13:06 cso-minikube-nifi-api-flow-1.md
--rw-rw-r--  1 tunas tunas  4988 Jun  3 13:06 cso-minikube-nifi-api-flow-2.md
--rw-rw-r--  1 tunas tunas  2346 Jun  3 13:06 efm-nifi-registry-install.md
--rw-rw-r--  1 tunas tunas 11328 Jun  3 13:06 efm-nvidia-jetson-nano.md
-drwxrwxr-x  2 tunas tunas  4096 Jun  3 13:06 files
--rw-rw-r--  1 tunas tunas  5693 Jun  3 13:06 flink-minikube-gpu-working-2.md
--rw-rw-r--  1 tunas tunas  9829 Jun  3 13:06 flink-minikube-gpu-working.md
--rw-rw-r--  1 tunas tunas  6523 Jun  3 13:06 grok-nifi-kafka-flink-kubernetes-2.md
--rw-rw-r--  1 tunas tunas  6923 Jun  3 13:06 grok-nifi-kafka-flink-kubernetes-3.md
--rw-rw-r--  1 tunas tunas  3843 Jun  3 13:06 grok-nifi-kafka-flink-kubernetes.md
-drwxrwxr-x  2 tunas tunas  4096 Jun  3 13:06 history
--rw-rw-r--  1 tunas tunas  4818 Jun  3 13:06 nifi-as-an-api.md
--rw-rw-r--  1 tunas tunas  6421 Jun  3 13:06 nifi-music-alts.md
--rw-rw-r--  1 tunas tunas  4398 Jun  3 13:06 nifi-music-minifi-tuning.md
--rw-rw-r--  1 tunas tunas  6708 Jun  3 13:06 nifi-music-sonification.md
--rw-rw-r--  1 tunas tunas 22939 Jun  3 13:06 nifi-music.md
--rw-rw-r--  1 tunas tunas  4566 Jun  3 13:06 nipyapi.md
--rw-rw-r--  1 tunas tunas 21244 Jun  3 13:06 openclaw-windows-agent.md
--rw-rw-r--  1 tunas tunas  5472 Jun  3 13:06 plan.md
--rw-rw-r--  1 tunas tunas  9137 Jun  3 13:06 rag-app-plan.md
--rw-rw-r--  1 tunas tunas  9450 Jun  3 13:06 sample-opensearch-proc.md
--rw-rw-r--  1 tunas tunas  6448 Jun  3 13:06 spark-versus-cso-1.md
--rw-rw-r--  1 tunas tunas 15059 Jun  3 13:06 spark2_to_spark3-notebookLM-2.md
--rw-rw-r--  1 tunas tunas  9091 Jun  3 13:06 spark2_to_spark3-notebookLM.md
--rw-rw-r--  1 tunas tunas 10216 Jun  3 13:06 spark2_to_spark3.md
--rw-rw-r--  1 tunas tunas  6806 Jun  3 13:06 top10-k8s-gemini-2026.md
--rw-rw-r--  1 tunas tunas  3860 Jun  3 13:06 top10-k8s-grok-2026.md
--rw-rw-r--  1 tunas tunas  4646 Jun  3 13:06 zeppelin.md
+...
+...
+...
+
 ```
----
-
-### Further Integration Ideas for Agent Skills
-
-- Github Repo Automation
-- Automate update of test user github.io page.
-- X/Grok Posting
-- Automate posting on X every time repo content is updated.
 
 ---
 
@@ -671,6 +629,14 @@ Let’s go build the rest of the empire. 🚀
 [vLLM on Minikube Blog](https://stevenmatison.com/blog/Deploying-vLLM-with-Qwen-Llama-on-Minikube/)
 [My GitHub](https://github.com/cldr-steven-matison)
 
+
+### Further Integration Ideas for Agent Skills
+
+- Github Repo Automation
+- Automate update of test user github.io page.
+- X/Grok Posting
+- Automate posting on X every time repo content is updated.
+
 ---
 
 ### Appendix: Terminal History Day 1
@@ -690,6 +656,8 @@ curl http://localhost:8000/v1/models
 curl -i http://localhost:8000/health
 
 # 2. Minikube environment recreation
+nano recreate-minikube-env.sh
+chmod +x recreate-minikube-env.sh
 ~/recreate-minikube-env.sh
 cat recreate-minikube-env.sh
 kubectl get pods -l app=vllm-server
@@ -709,6 +677,7 @@ openclaw exec-policy preset yolo
 openclaw exec-policy set --mode full --ask-off
 openclaw approvals set --stdin '{ "version": 1, "defaults": { "security": "full", "ask": "off", "askFallback": "full" } }'
 openclaw config patch '{"tools": {"profile": "full", "exec": {"security": "full", "ask": "off"}}}'
+nano ~/.openclaw/openclaw.json
 
 # 4. Python JSON patching (most reliable method)
 # (the two python3 -c blocks you used to force tools + max_tokens)
@@ -871,7 +840,7 @@ Plugins
 
 ### Appendix: Agent Chat to Deploy CSO Operators
 
-Day Two was all about deploying operators and optimizing the bot communication.    Most of my work is an `install-operators.sh` script and bot chat history, not terminal history.  Neat!!
+Day Two was all about deploying operators and optimizing the bot communication.    Most of my work is an `install-operators.sh` script.  I created this off environment and comitted to the Repo.  The chat bot did the git pull on the local ~/DesktopShare copy of the repo.  Most of my work is now bot chat commands to telegram, not terminal history on the machine.  Neat!!  Now I am further decoupled from the windows env but I am still able to use AI to test CSO Operators with the GPU. 
 
 `cat install-operators.sh`
 
@@ -994,7 +963,7 @@ curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
      -d "text=${FINAL_MSG}" > /dev/null
 ```
 
-Final Chat command I am using now:
+Final Chat command I am using now to Deploy CSO Operators on Windows:
 
 ```bash
 /bash sh ./DesktopShare/files/install-operators.sh > deploy.log 2>&1 &
@@ -1006,5 +975,9 @@ Output with the new Message sent on Completion:
 
 ✅ CSO Deployment completed successfully!
 ```
+
+ ⏱️ Total Time:  < 1 Minute on iteration  < 5 Minute first time
+
 [ I probably need to move cert manager to the minikube env setup.  That script also needs the cool chat reply back. TIL: 
-free gemini is terrible.  Next I am also going to need the bot to fetch CSO repo and start kubectl applies.  To be complete we need a tear down script vs whole env recreate. ]
+free gemini is terrible BE CAREFUL.  Next I am also going to need the bot to fetch CSO repo and start kubectl applies.  To be complete we need a tear down script vs whole env recreate. ]
+
