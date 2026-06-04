@@ -65,7 +65,7 @@ kubectl create secret generic nifi-admin-creds \
 echo "✅ All namespaces and secrets created successfully!"
 
 # Needed for CSA
-kubectl create -f https://github.com/jetstack/cert-manager/releases/download/v1.8.2/cert-manager.yaml
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.8.2/cert-manager.yaml
 kubectl wait -n cert-manager --for=condition=Available deployment --all
 
 echo "✅ Cert Manager Installed"
