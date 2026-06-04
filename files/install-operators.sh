@@ -95,4 +95,4 @@ helm upgrade --install cfm-operator oci://container.repository.cloudera.com/clou
   --set "authProxy.image.tag=0.19.0-r3-202503182126" \
   --set licenseSecret=cfm-operator-license
 
-  echo "✅ Operators Installed"
+  echo "✅ CSO Operators Installed (CFM,CSM,CSA)!!"
