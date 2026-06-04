@@ -1,6 +1,6 @@
 **Setup Plan for OpenClaw on Windows Desktop (WSL2 Ubuntu)**
 
-The goal is for my first **OpenClaw agent** to recreate the full Clouder Streaming Operators (CSO) on minikube + vLLM Qwen2.5-3B (24k context) stack on demand — zero-dollar local tokens, full Kubernetes control, Telegram-first interface. Everything runs inside WSL2 Ubuntu on my Windows desktop for maximum stability and native tool access.  Yes, this ai bot is going to self destruct 💥 and grow 🌱 again!!
+The goal is for my first **OpenClaw agent** to recreate the full Cloudera Streaming Operators (CSO) on minikube + vLLM Qwen2.5-3B (24k context) stack on demand — zero-dollar local tokens, full Kubernetes control, Telegram-first interface. Everything runs inside WSL2 Ubuntu on my Windows desktop for maximum stability and native tool access.  Yes, this ai bot is going to self destruct 💥 and grow 🌱 again!!
 
 ---
 
@@ -618,7 +618,7 @@ In just two sessions I went from zero day OpenClaw to a **self-hosted, private, 
 
 **Next chapter starts now.**
 
-Let’s go more of the Cloudera Streaming Operator empire. 🚀
+Let’s go build more of the Cloudera Streaming Operator empire. 🚀
 
 ---
 
