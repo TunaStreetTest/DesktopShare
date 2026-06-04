@@ -60,7 +60,6 @@ helm upgrade --install cert-manager jetstack/cert-manager \
   --create-namespace \
   --version v1.16.3 \
   --set installCRDs=true \
-  --atomic \
   -q >/dev/null 2>&1
 
 echo "⏳ Waiting for Cert-Manager readiness components..."
