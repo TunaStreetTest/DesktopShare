@@ -60,3 +60,11 @@ In an airgapped environment, `kubectl` cannot pull images from Cloudera or Docke
     --set-file flink-kubernetes-operator.clouderaLicense.fileContent=./license.txt \
     ./charts/csa-operator-1.5.0-b275.tgz
     ```
+
+
+
+
+
+docker pull docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614
+
+docker save docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614 > ~/csa-airgap/images/postgres-direct.tar
