@@ -79,9 +79,29 @@ docker pull container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
 
 Use the exact tag that matches your CSO / CEM entitlement — 2.2.0.0-86 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
 
-### EFM Deployment YAML (`efm-deployment.yaml`)
+### EFM Deployment YAML
 
-Create this file in your working directory:
+Create these files in your working directory:
+
+`efm-pvc.yaml`
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efm-agent-binaries
+  namespace: cld-streaming
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: standard
+
+````
+
+`efm-deployment.yaml`
 
 ```yaml
 apiVersion: apps/v1
@@ -184,6 +204,7 @@ kubectl create secret generic efm-encryption \
 Apply it:
 
 ```bash
+kubectl apply -f efm-pvc.yaml
 kubectl apply -f efm-deployment.yaml
 ```
 
@@ -222,6 +243,30 @@ kubectl cp ~/efm-binaries/java -n cld-streaming $(kubectl get pod -n cld-streami
 kubectl cp ~/efm-binaries/cpp -n cld-streaming $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}'):/opt/efm/agent-deployer/binaries/cpp
 ```
 
+
+need to adjust command above, here is history to get it to work, had to add pvc, get the binaries to right place
+
+```bash
+steven.matison@FTF3XR2065 ~ % history
+ 1020  mkdir -p ~/efm-binaries/cpp/linux/1.26.02\nmv ~/efm-binaries/cpp/cpp/linux/1.26.02/minifi.tar.gz ~/efm-binaries/cpp/linux/1.26.02/ 2>/dev/null || true\nrm -rf ~/efm-binaries/cpp/cpp
+ 1021  kubectl delete -f efm-deployment.yaml\nkubectl apply -f efm-deployment.yaml
+ 1022  kubectl exec -it $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}') -n cld-streaming -- mkdir -p /opt/efm/agent-deployer/binaries\nkubectl cp ~/efm-binaries/cpp -n cld-streaming $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}'):/opt/efm/agent-deployer/binaries/cpp
+ 1023  kubectl exec -it $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}') -n cld-streaming -- find /opt/efm/agent-deployer/binaries -type f
+ 1024  kubectl exec -it $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}') -n cld-streaming -- env
+ 1025  kubectl exec -it $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}') -n cld-streaming -- find / -name "agent-deployer" 2>/dev/null
+ 1026  nano efm-deployment.yaml
+ 1027  kubectl delete -f efm-deployment.yaml\nkubectl apply -f efm-deployment.yaml
+ 1028  kubectl delete -f efm-deployment.yaml\nkubectl apply -f efm-deployment.yaml
+ 1029  kubectl delete -f efm-deployment.yaml\nkubectl apply -f efm-deployment.yaml
+ 1030  kubectl describe pod -l app=efm -n cld-streaming
+ 1031  nano efm-pvc.yaml
+ 1032  kubectl apply -f efm-pvc.yaml
+ 1033  kubectl exec -it $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}') -n cld-streaming -- mkdir -p /opt/efm/efm-2.3.1.0-2/agent-deployer/binaries
+ 1034  kubectl cp ~/efm-binaries/cpp -n cld-streaming $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}'):/opt/efm/efm-2.3.1.0-2/agent-deployer/binaries/cpp
+ 1035  kubectl exec -it $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}') -n cld-streaming -- find /opt/efm/efm-2.3.1.0-2/agent-deployer/binaries -type f
+```
+
+
 Wait for EFM pod to be fully ready (important!)
 
 ```bash
@@ -255,6 +300,79 @@ minikube tunnel
 
 Open that URL in your browser — you should land on the EFM login screen.
 
+
+Now create a class and you can get to the Deploy Agent CLI Command Screen to verify cpp v 1.26.02 binary is there.
+
+ 
+```bash
+curl -L \
+ -d agentClass=test \
+ -d agentIdentifier=b2c63cf5-de86-4b62-8d17-cad369af68ad \
+ -d agentType=cpp \
+ -d agentVersion=1.26.02 \
+ -d autoConfigureSecurity=false \
+ -d baseUrl=http%3A%2F%2F127.0.0.1%3A10090%2Fefm%2Fapi \
+ -d hbPeriod=5000 \
+ -d osArch=linux \
+ -d serviceName=minifi \
+ -d serviceUser=minifi \
+ -d trustSelfSignedCertificates=false \
+ http://127.0.0.1:10090/efm/api/agent-deployer/script | bash -
+```
+
+Now that we have an agent code,  thats wrap that up with AI into a kubernetes pod:
+
+create `minifi-agent-pod.yaml`
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: minifi-agent-test
+  namespace: cld-streaming
+spec:
+  containers:
+  - name: minifi
+    image: ubuntu:22.04
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/bash", "-c"]
+    args:
+    - |
+      apt-get update && apt-get install -y curl tar
+      curl -L \
+       -d agentClass=test \
+       -d agentIdentifier=b2c63cf5-de86-4b62-8d17-cad369af68ad \
+       -d agentType=cpp \
+       -d agentVersion=1.26.02 \
+       -d autoConfigureSecurity=false \
+       -d baseUrl=http%3A%2F%2Fefm.cld-streaming.svc%3A10090%2Fefm%2Fapi \
+       -d hbPeriod=5000 \
+       -d osArch=linux \
+       -d serviceName=minifi \
+       -d serviceUser=root \
+       -d trustSelfSignedCertificates=false \
+       http://efm.cld-streaming.svc:10090/efm/api/agent-deployer/script | bash -
+      tail -f /dev/null%                                      
+```
+
+Before I could get c++ agent to work in the pod I had to do this:
+
+```bash
+eval $(minikube docker-env)
+docker pull --platform linux/amd64 ubuntu:22.04
+```
+
+Apply the Agent Pod:
+
+```bash
+kubectl apply -f minifi-agent-pod.yaml
+kubectl wait --for=condition=ready pod minifi-agent-test -n cld-streaming --timeout=60s\nkubectl logs minifi-agent-test -n cld-streaming
+kubectl logs minifi-agent-test -n cld-streaming -f
+kubectl exec -it minifi-agent-test -n cld-streaming -- tail -f /nifi-minifi-cpp-1.26.02/logs/minifi-app.log
+```
+
+Now Minifi should be up in the pod and the agent should appear in the Test Class in the EFM Dashboard.  Win!
+
 ### Add EFM to Your CSO Prometheus Observability
 
 Create `efm-servicemonitor.yaml`:
@@ -281,13 +399,12 @@ kubectl apply -f efm-servicemonitor.yaml
 
 EFM metrics now flow straight into the same Prometheus/Grafana stack you already have for NiFi, Flink, Kafka, and Schema Registry.
 
-### Deploy MiNiFi C++ Agents from EFM (The Fun Part)
+### Deploy MiNiFi C++ Flows and Resources from EFM
 
 In EFM UI:
+
 1. Design your flow (or import one).
 2. Add **assets** (your TensorFlow/ONNX models, Python scripts, etc.).
-3. Create a **Class** for each target environment (Windows C++, Docker, K8s, Jetson).
-4. Generate the **one-line installer command** (new in recent EFM — game changer).
 
 #### MiNiFi Target: NVIDIA Jetson Orin Nano (Edge AI)
 Jetson runs Ubuntu 22.04 + JetPack. Install MiNiFi C++ via the Linux tarball (x86_64 works via Docker or native if you cross-compile for aarch64 — Cloudera provides Linux binaries; for pure ARM I recommend the Docker route with NVIDIA runtime).
