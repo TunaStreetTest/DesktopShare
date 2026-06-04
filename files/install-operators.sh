@@ -106,4 +106,15 @@ helm upgrade --install cfm-operator oci://container.repository.cloudera.com/clou
   --set "authProxy.image.tag=0.19.0-r3-202503182126" \
   --set licenseSecret=cfm-operator-license
 
-  echo "✅ CSO Operators Installed (CFM,CSM,CSA)!!"
+TOKEN="8511465033:AAEWa8Xt10luM9c-b2DVxaA6xozrTEN09oI"
+CHAT_ID="8541049112"
+
+if [ $? -eq 0 ]; then
+    FINAL_MSG="✅ CSO Deployment completed successfully!"
+else
+    FINAL_MSG="❌ CSO Deployment failed! Check deploy.log for details."
+fi
+
+curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+     -d "chat_id=${CHAT_ID}" \
+     -d "text=${FINAL_MSG}" > /dev/null
