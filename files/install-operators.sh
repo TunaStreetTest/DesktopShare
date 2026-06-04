@@ -108,6 +108,7 @@ helm upgrade --install cfm-operator oci://container.repository.cloudera.com/clou
 
 TOKEN="8511465033:AAEWa8Xt10luM9c-b2DVxaA6xozrTEN09oI"
 CHAT_ID="8541049112"
+MESSAGE="🎉 Cloudera Streaming Operators installation script has finished running in WSL2!"
 
 if [ $? -eq 0 ]; then
     FINAL_MSG="✅ CSO Deployment completed successfully!"
@@ -117,4 +118,4 @@ fi
 
 curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
      -d "chat_id=${CHAT_ID}" \
-     -d "text=${FINAL_MSG}" > /dev/null
+     -d "text=${MESSAGE}" > /dev/null
