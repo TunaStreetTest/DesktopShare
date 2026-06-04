@@ -79,16 +79,20 @@ echo "✅ All namespaces and secrets created successfully!"
 
 helm upgrade --install strimzi-cluster-operator --namespace cld-streaming --set 'image.imagePullSecrets[0].name=cloudera-creds' --set-file clouderaLicense.fileContent=/home/tunas/license.txt --set watchAnyNamespace=true oci://container.repository.cloudera.com/cloudera-helm/csm-operator/strimzi-kafka-operator --version 1.6.0-b99
 
-helm upgrade --install csa-operator --namespace cld-streaming \
-    --version 1.5.0-b275 \
-    --set 'flink-kubernetes-operator.imagePullSecrets[0].name=cloudera-creds' \
-    --set 'ssb.sse.image.imagePullSecrets[0].name=cloudera-creds' \
-    --set 'ssb.sqlRunner.image.imagePullSecrets[0].name=cloudera-creds' \
-    --set 'ssb.mve.image.imagePullSecrets[0].name=cloudera-creds' \
-    --set 'ssb.database.imagePullSecrets[0].name=cloudera-creds' \
-    --set 'ssb.flink.image.imagePullSecrets[0].name=cloudera-creds' \
-    --set-file flink-kubernetes-operator.clouderaLicense.fileContent=/home/tunas/license.txt \
-    oci://container.repository.cloudera.com/cloudera-helm/csa-operator/csa-operator
+# this one requires vpn
+#  Warning  Failed     27s (x5 over 3m34s)  kubelet            spec.containers{postgresql}: Failed to pull image "docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614": Error response from daemon: Get "https://docker-private.infra.cloudera.com/v2/": dial tcp: lookup docker-private.infra.cloudera.com on 192.168.65.254:53: no such host
+#  Warning  Failed     27s (x5 over 3m34s)  kubelet            spec.containers{postgresql}: Error: ErrImagePull
+#  Normal   BackOff    1s (x13 over 3m34s)  kubelet            spec.containers{postgresql}: Back-off pulling image "docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614"
+#  Warning  Failed     1s (x13 over 3m34s)  kubelet            spec.containers{postgresql}: Error: ImagePullBackOff
+#helm upgrade --install csa-operator --namespace cld-streaming \
+#    --version 1.5.0-b275 \
+#    --set 'flink-kubernetes-operator.imagePullSecrets[0].name=cloudera-creds' \
+#    --set 'ssb.sse.image.imagePullSecrets[0].name=cloudera-creds' \
+#    --set 'ssb.sqlRunner.image.imagePullSecrets[0].name=cloudera-creds' \
+#    --set 'ssb.mve.image.imagePullSecrets[0].name=cloudera-creds' \
+#    --set 'ssb.database.imagePullSecrets[0].name=cloudera-creds' \
+#    --set 'ssb.flink.image.imagePullSecrets[0].name=cloudera-creds' \
+#    --set-file flink-kubernetes-operator.clouderaLicense.fileContent=/home/tunas/license.txt \
 
 helm upgrade --install cfm-operator oci://container.repository.cloudera.com/cloudera-helm/cfm-operator/cfm-operator \
   --namespace cfm-streaming \
