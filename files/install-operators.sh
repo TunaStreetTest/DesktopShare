@@ -16,7 +16,7 @@ echo "🚀 Starting Kubernetes resource creation..."
 kubectl create namespace cld-streaming --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic cfm-operator-license \
-  --from-file=license.txt=.../license.txt \
+  --from-file=license.txt=/home/tunas/license.txt \
   -n cld-streaming
 
 kubectl create secret docker-registry cloudera-creds \
@@ -40,7 +40,7 @@ echo "$CLOUDERA_PASS" | helm registry login container.repository.cloudera.com \
 kubectl create namespace cfm-streaming --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic cfm-operator-license \
-  --from-file=license.txt=.../license.txt \
+  --from-file=license.txt=/home/tunas/license.txt \
   -n cfm-streaming
 
 kubectl create secret docker-registry cloudera-creds \
