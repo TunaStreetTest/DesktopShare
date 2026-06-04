@@ -969,6 +969,7 @@ helm upgrade --install strimzi-cluster-operator --namespace cld-streaming --set 
 #    --set 'ssb.database.imagePullSecrets[0].name=cloudera-creds' \
 #    --set 'ssb.flink.image.imagePullSecrets[0].name=cloudera-creds' \
 #    --set-file flink-kubernetes-operator.clouderaLicense.fileContent=/home/tunas/license.txt \
+#    oci://container.repository.cloudera.com/cloudera-helm/csa-operator/csa-operator
 
 helm upgrade --install cfm-operator oci://container.repository.cloudera.com/cloudera-helm/cfm-operator/cfm-operator \
   --namespace cfm-streaming \
