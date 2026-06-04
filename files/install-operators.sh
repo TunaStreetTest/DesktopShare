@@ -70,10 +70,10 @@ kubectl wait -n cert-manager --for=condition=Available deployment --all
 
 echo "✅ Cert Manager Installed"
 
-helm install strimzi-cluster-operator --namespace cld-streaming --set 'image.imagePullSecrets[0].name=cloudera-creds' --set-file clouderaLicense.fileContent=./license.txt --set watchAnyNamespace=true oci://container.repository.cloudera.com/cloudera-helm/csm-operator/strimzi-kafka-operator --version 1.6.0-b99
+helm upgrade --install strimzi-cluster-operator --namespace cld-streaming --set 'image.imagePullSecrets[0].name=cloudera-creds' --set-file clouderaLicense.fileContent=./license.txt --set watchAnyNamespace=true oci://container.repository.cloudera.com/cloudera-helm/csm-operator/strimzi-kafka-operator --version 1.6.0-b99
 
 
-helm install csa-operator --namespace cld-streaming \
+helm upgrade --install csa-operator --namespace cld-streaming \
     --version 1.5.0-b275 \
     --set 'flink-kubernetes-operator.imagePullSecrets[0].name=cloudera-creds' \
     --set 'ssb.sse.image.imagePullSecrets[0].name=cloudera-creds' \
@@ -84,7 +84,7 @@ helm install csa-operator --namespace cld-streaming \
     --set-file flink-kubernetes-operator.clouderaLicense.fileContent=/home/tunas/license.txt \
     oci://container.repository.cloudera.com/cloudera-helm/csa-operator/csa-operator
 
-helm install cfm-operator oci://container.repository.cloudera.com/cloudera-helm/cfm-operator/cfm-operator \
+helm upgrade --install cfm-operator oci://container.repository.cloudera.com/cloudera-helm/cfm-operator/cfm-operator \
   --namespace cfm-streaming \
   --version 3.0.0-b126 \
   --set installCRDs=true \
