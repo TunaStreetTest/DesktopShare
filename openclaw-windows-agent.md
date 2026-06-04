@@ -1,6 +1,6 @@
 **Setup Plan for OpenClaw on Windows Desktop (WSL2 Ubuntu)**
 
-The goal is for my first **OpenClaw agent** to recreate the full CSO Operators on minikube + vLLM Qwen2.5-3B (24k context) stack on demand — zero-dollar local tokens, full Kubernetes control, Telegram-first interface. Everything runs inside WSL2 Ubuntu on my Windows desktop for maximum stability and native tool access.  Yes, this ai bot is going to self destruct 💥 and grow 🌱 again!!
+The goal is for my first **OpenClaw agent** to recreate the full Clouder Streaming Operators (CSO) on minikube + vLLM Qwen2.5-3B (24k context) stack on demand — zero-dollar local tokens, full Kubernetes control, Telegram-first interface. Everything runs inside WSL2 Ubuntu on my Windows desktop for maximum stability and native tool access.  Yes, this ai bot is going to self destruct 💥 and grow 🌱 again!!
 
 ---
 
@@ -78,7 +78,7 @@ brew install gcc
 nvidia-smi
 docker run --rm --gpus all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi
 ```
-**See Resources Below** for backing blog posts with all of the setup instructions for MiniKube and the GPU. 
+**See Resources Below** for backing blog posts with all of the setup instructions for CSO and MiniKube and the GPU. 
 
 ---
 
@@ -605,7 +605,7 @@ drwxrwxr-x  8 tunas tunas  4096 Jun  3 13:06 .git
 
 **My First OpenClaw Agent = Fully Operational.** 🔥
 
-After weeks of iteration, debugging, YAML wrestling, JSON patching, and multiple model-size battles with my own hands on the Windows keyboard; I am officially retried.  My personal **DevOps agent** is now live and ready to get a whole lot more capable with CSO Operators on Minkube with Windows → WSL2 Ubuntu.
+After weeks of iteration, debugging, YAML wrestling, JSON patching, and multiple model-size battles with my own hands on the Windows keyboard; I am officially retried.  My personal **Windows DevOps Agent** is now live and ready to get a whole lot more capable with CSO Operators on Minkube with Windows → WSL2 Ubuntu.
 
 **What I now have:**
 - A rock-solid `~/recreate-minikube-env.sh` that the agent can call anytime to nuke and rebuild the entire Minikube + vLLM stack in minutes.
@@ -624,11 +624,11 @@ Let’s go more of the Cloudera Streaming Operator empire. 🚀
 
 ### Resources:
 
-[https://docs.openclaw.ai/cli](https://docs.openclaw.ai/cli)
-[My Windows Playground](https://github.com/cldr-steven-matison/DesktopShare) 
-[Cloudera Streaming Operators](https://github.com/cldr-steven-matison/ClouderaStreamingOperators)
-[vLLM on Minikube Blog](https://stevenmatison.com/blog/Deploying-vLLM-with-Qwen-Llama-on-Minikube/)
-[My GitHub](https://github.com/cldr-steven-matison)
+- [https://docs.openclaw.ai/cli](https://docs.openclaw.ai/cli)
+- [My Windows Playground](https://github.com/cldr-steven-matison/DesktopShare) 
+- [Cloudera Streaming Operators](https://github.com/cldr-steven-matison/ClouderaStreamingOperators)
+- [vLLM on Minikube Blog](https://stevenmatison.com/blog/Deploying-vLLM-with-Qwen-Llama-on-Minikube/)
+- [My GitHub](https://github.com/cldr-steven-matison)
 
 
 ### Further Integration Ideas for Agent Skills
@@ -980,5 +980,5 @@ Output with the new Message sent on Completion:
  ⏱️ Total Time:  < 1 Minute on iteration  < 5 Minute first time.
 
 [ I probably need to move cert manager to the minikube env setup.  That script also needs the cool chat reply back. TIL: 
-free gemini is terrible BE CAREFUL.  Next I am also going to need the bot to fetch CSO repo and start kubectl applies.  To be complete we need a tear down script vs whole env recreate. ]
+free gemini is terrible BE CAREFUL.  Next I am also going to need the bot to fetch CSO repo and start kubectl applies.  To be complete I need a tear down script vs whole env recreate. ArgoCD should be here.  Test bot needs to make its own commits; need to get WSL2 terminal configured for git w/ @tunastreettest user. ]
 
