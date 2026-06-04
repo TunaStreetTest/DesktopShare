@@ -1,14 +1,14 @@
 **Setup Plan for OpenClaw on Windows Desktop (WSL2 Ubuntu)**
 
-The goal is for my first **OpenClaw agent** to recreate the full CSO Operators on minikube + vLLM Qwen2.5-3B (24k context) stack on demand — zero-dollar local tokens, full Kubernetes control, Telegram-first interface. Everything runs inside WSL2 Ubuntu on my Windows desktop for maximum stability and native tool access.  Yes, this ai bot is going to self destruct and grow again!!
+The goal is for my first **OpenClaw agent** to recreate the full CSO Operators on minikube + vLLM Qwen2.5-3B (24k context) stack on demand — zero-dollar local tokens, full Kubernetes control, Telegram-first interface. Everything runs inside WSL2 Ubuntu on my Windows desktop for maximum stability and native tool access.  Yes, this ai bot is going to self destruct 💥 and grow 🌱 again!!
 
 ---
 
 ### Phase 1: Initial Minikube Env Recreation Script
 
-**Script location**: `~/recreate-minikube-env.sh`
-
 This is the **single minikube restart script** the OpenClaw agent will call to “reset environment”.
+
+cat `~/recreate-minikube-env.sh`
 
 ```bash
 #!/bin/bash
@@ -61,7 +61,7 @@ Make it executable:
 chmod +x ~/recreate-minikube-env.sh
 ```
 
-**Pro tip from Day 1**: The first time these things run 4-6+ minute timeouts are real. The script now includes better waiting logic and secret handling so the agent can run it safely without manual intervention, but it usually times out. It's okay it does finish. In further steps some of the helm commands are lengthy too the first time they are proposed to an env.  After a first run redoing the setup is much quicker.
+**Pro tip from Day 1**: The first time these things run 4-6+ minute timeouts are real. The script now includes better waiting logic and secret handling so the agent can run it safely without manual intervention, but it usually times out.  In further steps some of the helm commands are lengthy too so the first time they are proposed to an env they take awhile to complete.  After that first run redoing the setup is much quicker.  Consider doing these manually or allow a very long timeout.
 
 ---
 
@@ -78,7 +78,7 @@ brew install gcc
 nvidia-smi
 docker run --rm --gpus all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi
 ```
-**See Resources Below** for backing blog posts with all of the setup instructions. 
+**See Resources Below** for backing blog posts with all of the setup instructions for MiniKube and the GPU. 
 
 ---
 
@@ -407,6 +407,7 @@ cat ~/.openclaw/openclaw.json
 **!! the big win here was unlocking command `/bash`** ,  also `/exec` is not execute.  Thanks AI we are both learning!!
 
 **Apply changes**:
+
 ```bash
 openclaw gateway stop && openclaw gateway start
 openclaw doctor --fix # only if you need
@@ -458,7 +459,7 @@ Troubleshooting: https://docs.openclaw.ai/troubleshooting
 [ I went through many ai rounds with Qwen/Qwen2.5-3B-Instruct, Qwen/Qwen2.5-5B-Instruct,  and Qwen/Qwen2.5-7B-Instruct-Awq
 .  In most cases could barely get the model under 8gb of the GPU.  This made it impossible to start.   In this model 32000 finally gives enough headroom for the application to run. ]
 
-`cat vllm-qwen.yaml`
+cat `vllm-qwen.yaml`
 
 ```bash
 apiVersion: apps/v1
@@ -602,22 +603,22 @@ drwxrwxr-x  8 tunas tunas  4096 Jun  3 13:06 .git
 
 ### Summary: Mission Accomplished
 
-**Your First OpenClaw Agent = Fully Operational.** 🔥
+**My First OpenClaw Agent = Fully Operational.** 🔥
 
-After weeks of iteration, debugging, YAML wrestling, JSON patching, and multiple model-size battles, my personal **DevOps agent** is now live and ready to get a whole lot smatter on Windows → WSL2 Ubuntu.
+After weeks of iteration, debugging, YAML wrestling, JSON patching, and multiple model-size battles with my own hands on the Windows keyboard; I am officially retried.  My personal **DevOps agent** is now live and ready to get a whole lot more capable with CSO Operators on Minkube with Windows → WSL2 Ubuntu.
 
-**What you now have:**
+**What I now have:**
 - A rock-solid `~/recreate-minikube-env.sh` that the agent can call anytime to nuke and rebuild the entire Minikube + vLLM stack in minutes.
 - A quantized **Qwen2.5-3B-Instruct** (32k context, bitsandbytes) running locally with zero-dollar tokens and full GPU acceleration.
 - True **/bash** execution unlocked — the agent can now run any host command (kubectl, git, docker, etc.) directly from Telegram.
 - Clean, production-grade OpenClaw config with secure elevated tools, coding profile, Telegram-first control, and mobile skills stripped out.
 - End-to-end tested: `/status`, `/bash kubectl …`, `/bash git clone …`, environment reset — all working flawlessly.
 
-In just two sessions we went from zero day OpenClaw to a **self-hosted, private, Telegram-controlled DevOps Agent** that lives on your desktop and actually ships commands to WSL2 ubuntu.
+In just two sessions I went from zero day OpenClaw to a **self-hosted, private, DevOps Agent** that lives on my desktop GPU behind a Telegram Chat to act on my behalf installing and testing future projects.
 
 **Next chapter starts now.**
 
-Let’s go build the rest of the empire. 🚀
+Let’s go more of the Cloudera Streaming Operator empire. 🚀
 
 ---
 
@@ -641,7 +642,7 @@ Let’s go build the rest of the empire. 🚀
 
 ### Appendix: Terminal History Day 1
 
-Here is every **unique** command you ran, deduplicated, grouped, and with context. This is the “what actually worked” reference.
+Here is every **unique** command I ran, deduplicated, grouped, and with context. This is the “what actually worked” reference.
 
 ```bash
 # 1. vLLM / Kubernetes deployment & debugging
@@ -840,7 +841,7 @@ Plugins
 
 ### Appendix: Agent Chat to Deploy CSO Operators
 
-Day Two was all about deploying operators and optimizing the bot communication.    Most of my work is an `install-operators.sh` script.  I created this off environment and comitted to the Repo.  The chat bot did the git pull on the local ~/DesktopShare copy of the repo.  Most of my work is now bot chat commands to telegram, not terminal history on the machine.  Neat!!  Now I am further decoupled from the windows env but I am still able to use AI to test CSO Operators with the GPU. 
+Day Two was all about deploying operators from chat and optimizing the bot communication.    Most of my work is an `install-operators.sh` script.  I created this off environment and comitted to the Repo.  The chat bot did the git pull on the local ~/DesktopShare copy of the repo.  Most of my work is now bot chat commands to telegram, not terminal history on the machine.  Neat!!  Now I am further decoupled from the windows env but I am still able to use AI to test CSO Operators with the GPU. 
 
 `cat install-operators.sh`
 
@@ -976,7 +977,7 @@ Output with the new Message sent on Completion:
 ✅ CSO Deployment completed successfully!
 ```
 
- ⏱️ Total Time:  < 1 Minute on iteration  < 5 Minute first time
+ ⏱️ Total Time:  < 1 Minute on iteration  < 5 Minute first time.
 
 [ I probably need to move cert manager to the minikube env setup.  That script also needs the cool chat reply back. TIL: 
 free gemini is terrible BE CAREFUL.  Next I am also going to need the bot to fetch CSO repo and start kubectl applies.  To be complete we need a tear down script vs whole env recreate. ]
