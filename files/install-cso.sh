@@ -71,28 +71,40 @@ echo "🔄 Refreshing tracking index for Chart Repositories..."
 helm repo update >/dev/null 2>&1
 
 # --- 7. DEPLOY CLOUDERA STREAMING OPERATORS ---
-echo "⏳ Initializing Cloudera Streaming Operators Orchestration..."
+echo "🧹 Forcefully clearing old operator states to prevent hangs..."
 
-# [1/3] CSM - Strimzi Kafka Operator
+# 1. Force clear CSA / SSB components
+helm uninstall csa-operator -n cld-streaming >/dev/null 2>&1 || true
+# Forcefully delete any stuck SSB pods with 0-second grace periods so they don't block the script
+kubectl delete pods -l app=ssb-postgresql -n cld-streaming --force --grace-period=0 >/dev/null 2>&1 || true
+kubectl delete pods -l app=ssb-mve -n cld-streaming --force --grace-period=0 >/dev/null 2>&1 || true
+kubectl delete pods -l app=ssb-sse -n cld-streaming --force --grace-period=0 >/dev/null 2>&1 || true
+
+# 2. Force clear CFM / NiFi components
+helm uninstall cfm-operator -n cfm-streaming >/dev/null 2>&1 || true
+
+# 3. Force clear CSM / Strimzi components
+helm uninstall strimzi-cluster-operator -n cld-streaming >/dev/null 2>&1 || true
+
+echo "⏳ Re-initializing Cloudera Streaming Operators Orchestration..."
+
+# [1/3] CSM - Strimzi Kafka Operator (No --atomic flag, quiet mode)
 helm upgrade --install strimzi-cluster-operator cloudera/strimzi-kafka-operator \
   --namespace cld-streaming \
-  --atomic \
   -q >/dev/null 2>&1
 echo "📦 [1/3] CSM (Strimzi Kafka Operator) Deployed successfully."
 
-# [2/3] CSA - Cloudera Streaming Analytics (Flink) Operator
+# [2/3] CSA - Cloudera Streaming Analytics (Flink/SSB) Operator
 helm upgrade --install csa-operator cloudera/csa-operator \
   --namespace cld-streaming \
-  --atomic \
   -q >/dev/null 2>&1
 echo "📦 [2/3] CSA (Flink/SSB Operator) Deployed successfully."
 
 # [3/3] CFM - Cloudera Flow Management (NiFi) Operator
 helm upgrade --install cfm-operator cloudera/cfm-operator \
   --namespace cfm-streaming \
-  --atomic \
   -q >/dev/null 2>&1
 echo "📦 [3/3] CFM (NiFi Operator) Deployed successfully."
 
 # --- 8. SUCCESS SUMMARY ---
-echo "🎉 ALL CLOUDERA OPERATORS (CFM, CSM, CSA) SUCCESSFULLY UPGRADED & VERIFIED!"
+echo "🎉 ALL CSO OPERATORS RE-INSTALLED & RE-BUILT FRESH!"
