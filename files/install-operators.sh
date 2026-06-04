@@ -36,7 +36,7 @@ echo "$CLOUDERA_PASS" | helm registry login container.repository.cloudera.com \
   --password-stdin
 
 # Install cert manager
-helm install cert-manager jetstack/cert-manager --version v1.16.3 --namespace cert-manager --create-namespace --set installCRDs=true
+helm upgrade --install cert-manager jetstack/cert-manager --version v1.16.3 --namespace cert-manager --create-namespace --set installCRDs=true
 
 # Update Helm Repos
 helm repo update
