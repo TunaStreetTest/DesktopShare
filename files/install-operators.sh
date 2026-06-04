@@ -13,10 +13,10 @@ fi
 echo "🚀 Starting Kubernetes resource creation..."
 
 # 2. cld-streaming Namespace & Secrets
-kubectl create namespace cld-streaming
+kubectl create namespace cld-streaming --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic cfm-operator-license \
-  --from-file=license.txt=./license.txt \
+  --from-file=license.txt=.../license.txt \
   -n cld-streaming
 
 kubectl create secret docker-registry cloudera-creds \
@@ -37,10 +37,10 @@ echo "$CLOUDERA_PASS" | helm registry login container.repository.cloudera.com \
 # helm registry login container.repository.cloudera.com --username "$CLOUDERA_USER" --password "$CLOUDERA_PASS"
 
 # 4. cfm-streaming Namespace & Secrets
-kubectl create namespace cfm-streaming
+kubectl create namespace cfm-streaming --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic cfm-operator-license \
-  --from-file=license.txt=./license.txt \
+  --from-file=license.txt=.../license.txt \
   -n cfm-streaming
 
 kubectl create secret docker-registry cloudera-creds \
