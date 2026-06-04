@@ -35,8 +35,19 @@ echo "$CLOUDERA_PASS" | helm registry login container.repository.cloudera.com \
   --username "$CLOUDERA_USER" \
   --password-stdin
 
-# Install cert manager
-helm upgrade --install cert-manager jetstack/cert-manager --version v1.16.3 --namespace cert-manager --create-namespace --set installCRDs=true
+echo "⏳ Installing Cert-Manager via Helm..."
+# 1. Install cert-manager and its matching CRDs cleanly
+helm upgrade --install cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v1.16.3 \
+  --set installCRDs=true
+
+# 2. Wait for the Helm deployment to actually be ready before moving on
+echo "⏳ Waiting for Cert-Manager to be ready..."
+kubectl wait -n cert-manager --for=condition=Available deployment --all --timeout=120s
+
+echo "✅ Cert-Manager Installed successfully!"
 
 # Update Helm Repos
 helm repo update
@@ -64,11 +75,7 @@ kubectl create secret generic nifi-admin-creds \
 
 echo "✅ All namespaces and secrets created successfully!"
 
-# Needed for CSA
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.8.2/cert-manager.yaml
-kubectl wait -n cert-manager --for=condition=Available deployment --all
 
-echo "✅ Cert Manager Installed"
 
 helm upgrade --install strimzi-cluster-operator --namespace cld-streaming --set 'image.imagePullSecrets[0].name=cloudera-creds' --set-file clouderaLicense.fileContent=/home/tunas/license.txt --set watchAnyNamespace=true oci://container.repository.cloudera.com/cloudera-helm/csm-operator/strimzi-kafka-operator --version 1.6.0-b99
 
