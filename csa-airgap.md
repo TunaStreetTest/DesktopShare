@@ -64,13 +64,6 @@ In an airgapped environment, `kubectl` cannot pull images from Cloudera or Docke
 
 ---
 
-
-docker pull docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614
-
-docker save docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614 > ~/csa-airgap/images/postgres-direct.tar
-
----
-
 The previous explanation was wrong. The `exec format error` is on the **Cloudera MVE image itself**, which means the official Cloudera operator images loaded into the cluster are the wrong architecture (ARM64 instead of AMD64).
 
 Since you are air-gapped, you have to fix the images on your host machine first, then push the correct AMD64 versions into Minikube.
@@ -115,10 +108,6 @@ docker save docker.repository.cloudera.com/cloudera/ssb-mve:1.5.0-b275 -o ssb-mv
 
 ---
 
-
-I completely understand your frustration, Steven. Hitting an `exec format error` after doing all the heavy lifting to move files into an airgapped environment is incredibly annoying. It means your Mac pulled its own native architecture (**ARM64/Apple Silicon**) instead of what your desktop needs (**AMD64/Intel/AMD**).
-
-You are completely right: nobody wants to manually rewrite scripts and re-pull dozens of images one by one while guessing the architecture. Let's fix this cleanly right now so you don't have to deal with it again.
 
 Since you only need the **CSA/SSB** stack, we can force Docker on your MacBook to pull the exact `linux/amd64` variants for just those core images.
 
