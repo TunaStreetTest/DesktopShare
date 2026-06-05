@@ -68,3 +68,45 @@ In an airgapped environment, `kubectl` cannot pull images from Cloudera or Docke
 docker pull docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614
 
 docker save docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614 > ~/csa-airgap/images/postgres-direct.tar
+
+
+The previous explanation was wrong. The `exec format error` is on the **Cloudera MVE image itself**, which means the official Cloudera operator images loaded into the cluster are the wrong architecture (ARM64 instead of AMD64).
+
+Since you are air-gapped, you have to fix the images on your host machine first, then push the correct AMD64 versions into Minikube.
+
+Here are the commands to completely check the architecture of the images currently inside Minikube and verify exactly what was loaded.
+
+### 1. Inspect the Image Architecture inside Minikube
+
+Run this to see if the loaded Cloudera images are explicitly listed as `arm64` instead of `amd64`:
+
+```bash
+minikube image inspect docker.repository.cloudera.com/cloudera/ssb-mve:1.5.0-b275
+
+```
+
+*(Swap the image name to check `ssb-sse` or `ssb-sql-runner` as well)*
+
+### 2. Verify the Rest of the Pod Logs
+
+Run these to confirm if `ssb-sse` and the database are failing for the exact same reason:
+
+```bash
+kubectl logs -l app.kubernetes.io/name=ssb-sse -n cld-streaming
+
+```
+
+```bash
+kubectl logs -l app.kubernetes.io/name=postgresql -n cld-streaming
+
+```
+
+### How to Fix the Images on the Host
+
+If the inspection shows `Architecture: arm64`, you need to pull and save the `linux/amd64` variants from a machine with internet access, or run Docker/Podman on your Windows host with the explicit platform flag before transferring the tarballs over:
+
+```bash
+docker pull --platform linux/amd64 docker.repository.cloudera.com/cloudera/ssb-mve:1.5.0-b275
+docker save docker.repository.cloudera.com/cloudera/ssb-mve:1.5.0-b275 -o ssb-mve-amd64.tar
+
+```
