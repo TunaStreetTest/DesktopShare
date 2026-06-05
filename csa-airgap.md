@@ -62,13 +62,14 @@ In an airgapped environment, `kubectl` cannot pull images from Cloudera or Docke
     ```
 
 
-
+---
 
 
 docker pull docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614
 
 docker save docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614 > ~/csa-airgap/images/postgres-direct.tar
 
+---
 
 The previous explanation was wrong. The `exec format error` is on the **Cloudera MVE image itself**, which means the official Cloudera operator images loaded into the cluster are the wrong architecture (ARM64 instead of AMD64).
 
@@ -110,3 +111,89 @@ docker pull --platform linux/amd64 docker.repository.cloudera.com/cloudera/ssb-m
 docker save docker.repository.cloudera.com/cloudera/ssb-mve:1.5.0-b275 -o ssb-mve-amd64.tar
 
 ```
+
+
+---
+
+
+I completely understand your frustration, Steven. Hitting an `exec format error` after doing all the heavy lifting to move files into an airgapped environment is incredibly annoying. It means your Mac pulled its own native architecture (**ARM64/Apple Silicon**) instead of what your desktop needs (**AMD64/Intel/AMD**).
+
+You are completely right: nobody wants to manually rewrite scripts and re-pull dozens of images one by one while guessing the architecture. Let's fix this cleanly right now so you don't have to deal with it again.
+
+Since you only need the **CSA/SSB** stack, we can force Docker on your MacBook to pull the exact `linux/amd64` variants for just those core images.
+
+### Phase 4 (Revised): Force AMD64 Architecture Pulls
+
+Run this exact script on your MacBook. It explicitly passes the `--platform linux/amd64` flag to `docker pull`, ensuring you get the correct desktop-compatible versions saved into your local directory.
+
+```bash
+# Define only the explicit CSA/SSB dependencies you need
+IMAGES=(
+"container.repository.cloudera.com/cloudera/flink-extended:1.20.1-csaop1.5.0-b275"
+"container.repository.cloudera.com/cloudera/flink-kubernetes-operator:1.13-csaop1.5.0-b275"
+"container.repository.cloudera.com/cloudera/ssb-mve:1.20.1-csaop1.5.0-b275"
+"container.repository.cloudera.com/cloudera/ssb-sse:1.20.1-csaop1.5.0-b275"
+"docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614"
+"container.repository.cloudera.com/cloudera_thirdparty/hardened/kube-rbac-proxy:0.19.0-r3-202503182126"
+"quay.io/jetstack/cert-manager-cainjector:v1.8.2"
+"quay.io/jetstack/cert-manager-controller:v1.8.2"
+"quay.io/jetstack/cert-manager-webhook:v1.8.2"
+)
+
+# Clear out any old incorrect architecture tars to avoid confusion
+rm -rf ~/csa-airgap/images/*.tar
+
+for img in "${IMAGES[@]}"; do
+    echo "--------------------------------------------------------"
+    echo "Forcing AMD64 Pull for: $img"
+    echo "--------------------------------------------------------"
+    
+    # The crucial fix: forcing the linux/amd64 platform
+    docker pull --platform linux/amd64 "$img"
+    
+    # Sanitize name for a clean tarball filename
+    safe_name=$(echo "$img" | tr '/:' '___')
+    
+    docker save "$img" > "~/csa-airgap/images/${safe_name}-amd64.tar"
+done
+
+```
+
+---
+
+### Clearing the Bad Images on the Desktop
+
+Before you copy these new tarballs over, you need to wipe the bad ARM64 images out of Minikube's cache on the airgapped desktop so they don't conflict.
+
+1. **Delete Existing Bad Images:** On Airgapped Desktop.
+SSH or open the terminal on your desktop and remove the broken images from Minikube:
+
+```bash
+minikube image rm container.repository.cloudera.com/cloudera/ssb-mve:1.20.1-csaop1.5.0-b275
+minikube image rm container.repository.cloudera.com/cloudera/ssb-sse:1.20.1-csaop1.5.0-b275
+minikube image rm docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614
+
+```
+
+
+2. **Load the New AMD64 Tarballs:** On Airgapped Desktop.
+Plug your USB drive back into the desktop, navigate to your images folder, and bulk-load the corrected files directly into Minikube:
+
+```bash
+for f in ./*-amd64.tar; do minikube image load "$f"; done
+
+```
+
+
+3. **Verify the Architecture:** On Airgapped Desktop.
+Quickly double-check that Minikube reads them correctly now:
+
+```bash
+minikube image inspect container.repository.cloudera.com/cloudera/ssb-mve:1.20.1-csaop1.5.0-b275 | grep Architecture
+
+```
+
+It should now output: `"Architecture": "amd64"`.
+
+
+Once verified, you can delete the failing pods using `kubectl delete pod <pod-name> -n cld-streaming`, and Kubernetes will automatically recreate them using the newly loaded AMD64 images.
