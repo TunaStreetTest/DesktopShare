@@ -212,24 +212,23 @@ kubectl apply -f efm-deployment.yaml
 
 You need binaries that match EFM 2.3.x compatibility:
 
-- **MiNiFi Java** → 2.24.08 (or any 2.24.x / 1.23+)
 - **MiNiFi C++** → 1.26.02 (best for Jetson Docker workflow)
 
 Log in to your Cloudera account (same credentials you used for `docker login container.repo.cloudera.com`) and download from:
 
-- Java: `https://archive.cloudera.com/p/cem-agents/...` (search “nifi-minifi-java” under CEM agents)
-- C++ Linux: `https://archive.cloudera.com/p/cem-agents/1.26.02/ubuntu24/apt/tars/nifi-minifi-cpp/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz` (and the extra-extensions + python-components if you want AI/ExecutePython)
+- C++ Linux: `https://archive.cloudera.com/p/cem-agents/1.26.02/ubuntu24/apt/tars/nifi-minifi-cpp/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz` 
+(and the extra-extensions + python-components if you want AI/ExecutePython)
 
 **Rename exactly as EFM expects** (one file per version directory):
 
 On your laptop/host, create a temp folder and prepare:
 
 ```bash
-mkdir -p ~/efm-binaries/java/linux/2.24.08
 mkdir -p ~/efm-binaries/cpp/linux/1.26.02
 
 # Example commands (replace with your actual downloaded files)
-cp /path/to/nifi-minifi-java-2.24.08-bin.tar.gz ~/efm-binaries/java/linux/2.24.08/minifi.tar.gz
+
+## need to confirm correct command
 cp /path/to/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz ~/efm-binaries/cpp/linux/1.26.02/minifi.tar.gz
 ```
 
@@ -239,12 +238,12 @@ cp /path/to/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz ~/efm-binaries/cpp/linu
 
 ```bash
 # Copy the whole tree into the pod
-kubectl cp ~/efm-binaries/java -n cld-streaming $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}'):/opt/efm/agent-deployer/binaries/java
+
 kubectl cp ~/efm-binaries/cpp -n cld-streaming $(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}'):/opt/efm/agent-deployer/binaries/cpp
 ```
 
 
-need to adjust command above, here is history to get it to work, had to add pvc, get the binaries to right place
+[ need to adjust command above, here is history to get it to work, had to add pvc, get the binaries to right place ]
 
 ```bash
 steven.matison@FTF3XR2065 ~ % history
@@ -373,6 +372,114 @@ kubectl exec -it minifi-agent-test -n cld-streaming -- tail -f /nifi-minifi-cpp-
 
 Now Minifi should be up in the pod and the agent should appear in the Test Class in the EFM Dashboard.  Win!
 
+
+### 
+### 1. Add ARM64 Binaries to EFM (one-time setup on your lab machine)
+
+Download the matching ARM64 packages from the Cloudera archive (same credentials as your Docker login):
+
+- Main binary:  
+  `https://archive.cloudera.com/p/cem-agents/1.26.02/redhat8arm64/yum/tars/nifi-minifi-cpp/nifi-minifi-cpp-1.26.02-b30-bin-linux-arm64.tar.gz`
+- Extra extensions (recommended for AI/ExecutePython/TensorRT):  
+  `https://archive.cloudera.com/p/cem-agents/1.26.02/redhat8arm64/yum/tars/nifi-minifi-cpp/nifi-minifi-cpp-1.26.02-b30-extra-extensions-linux-arm64.tar.gz`
+
+Prepare the directory tree (parallel to your existing `linux/` x86_64 binaries):
+
+```bash
+mkdir -p ~/efm-binaries/cpp/linux-arm64/1.26.02
+cp /path/to/nifi-minifi-cpp-*-bin-linux-arm64.tar.gz \
+   ~/efm-binaries/cpp/linux-arm64/1.26.02/minifi.tar.gz
+cp /path/to/nifi-minifi-cpp-*-extra-extensions-linux-arm64.tar.gz \
+   ~/efm-binaries/cpp/linux-arm64/1.26.02/extra-extensions.tar.gz   # EFM serves this automatically
+```
+
+Copy into the running EFM pod (PVC mount):
+
+```bash
+# Replace with your actual EFM pod name if needed
+EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
+
+kubectl cp ~/efm-binaries/cpp/linux-arm64 \
+  -n cld-streaming \
+  $EFM_POD:/opt/efm/agent-deployer/binaries/cpp/linux-arm64
+```
+
+Verify inside the pod:
+
+```bash
+kubectl exec -it $EFM_POD -n cld-streaming -- ls -lR /opt/efm/agent-deployer/binaries/cpp/linux-arm64
+```
+
+Restart EFM so it picks up the new binaries:
+
+```bash
+kubectl rollout restart deployment/efm -n cld-streaming
+kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
+```
+
+### 2. Make EFM Reachable from the Jetson
+
+On your lab machine (Minikube host):
+
+- Keep `minikube tunnel` running if you prefer localhost testing, **OR** expose via NodePort for network access (recommended for Jetson):
+
+```bash
+kubectl patch svc efm -n cld-streaming -p '{"spec":{"type":"NodePort"}}'
+minikube service efm -n cld-streaming   # note the URL / port it shows
+```
+
+Use your lab host’s **LAN IP** (e.g. `192.168.1.100`) and the port EFM listens on (usually 10090).  
+Example reachable URL: `http://192.168.1.100:10090`
+
+### 3. Deploy the MiNiFi C++ Agent on the Jetson Orin Nano
+
+SSH (or console) into the Jetson (Ubuntu 22.04 + JetPack).
+
+Install minimal prerequisites:
+
+```bash
+sudo apt-get update && sudo apt-get install -y curl tar uuid-runtime
+```
+
+Generate a **unique** agent identifier and run the exact same style CLI command you used for the K8s pod, with these changes:
+
+```bash
+curl -L \
+  -d agentClass=test \
+  -d agentIdentifier=$(uuidgen) \
+  -d agentType=cpp \
+  -d agentVersion=1.26.02 \
+  -d autoConfigureSecurity=false \
+  -d baseUrl=http%3A%2F%2F<YOUR_LAB_HOST_IP>%3A10090%2Fefm%2Fapi \
+  -d hbPeriod=5000 \
+  -d osArch=linux-arm64 \
+  -d serviceName=minifi \
+  -d serviceUser=root \
+  -d trustSelfSignedCertificates=false \
+  http://<YOUR_LAB_HOST_IP>:10090/efm/api/agent-deployer/script | bash -
+```
+
+**Replace** `<YOUR_LAB_HOST_IP>` with your actual lab machine IP.
+
+The script will:
+- Contact EFM
+- Download the **linux-arm64** binary + extra extensions
+- Extract and configure MiNiFi C++
+- Start the agent as a background process
+
+### 4. Verify the Agent Is Running
+
+```bash
+# Find the install location (usually created in current directory or /opt)
+ls -l minifi-1.26.02* || echo "Check ~/ or /opt/minifi*"
+
+# Tail the log
+tail -f minifi-1.26.02/logs/minifi-app.log
+```
+
+The agent should appear almost immediately in the EFM UI → **Monitor** → **Agents** (under class `test`).
+
+
 ### Add EFM to Your CSO Prometheus Observability
 
 Create `efm-servicemonitor.yaml`:
@@ -398,30 +505,6 @@ kubectl apply -f efm-servicemonitor.yaml
 ```
 
 EFM metrics now flow straight into the same Prometheus/Grafana stack you already have for NiFi, Flink, Kafka, and Schema Registry.
-
-### Deploy MiNiFi C++ Flows and Resources from EFM
-
-In EFM UI:
-
-1. Design your flow (or import one).
-2. Add **assets** (your TensorFlow/ONNX models, Python scripts, etc.).
-
-#### MiNiFi Target: NVIDIA Jetson Orin Nano (Edge AI)
-Jetson runs Ubuntu 22.04 + JetPack. Install MiNiFi C++ via the Linux tarball (x86_64 works via Docker or native if you cross-compile for aarch64 — Cloudera provides Linux binaries; for pure ARM I recommend the Docker route with NVIDIA runtime).
-
-On Jetson:
-```bash
-# Install NVIDIA Container Toolkit (already in JetPack)
-docker run --rm --runtime=nvidia --gpus all \
-  -v /path/to/flow.yml:/opt/minifi/config/flow.yml \
-  -v /path/to/models:/opt/minifi/models \
-  your-minifi-cpp-jetson-image
-```
-
-**Model execution inside MiNiFi**:
-- Use `ExecutePython` + ONNX/TensorRT Python bindings, or the built-in `TensorFlow` / `ExecuteML` processors (C++ extensions).
-- Bundle models as EFM **assets** → they land in the agent’s asset directory automatically.
-- Processor config points to `/opt/minifi/models/my-model.onnx`.
 
 **Metrics to Prometheus**:
 MiNiFi C++ has native Prometheus support. In `minifi.properties`:
