@@ -107,6 +107,20 @@ helm upgrade --install cfm-operator oci://container.repository.cloudera.com/clou
   --set "authProxy.image.tag=0.19.0-r3-202503182126" \
   --set licenseSecret=cfm-operator-license
 
+helm upgrade --install schema-registry \
+--namespace cld-streaming \
+--version 1.6.0-b99 \
+--values sr-values.yaml \
+--set "image.imagePullSecrets[0].name=cloudera-creds" \
+oci://container.repository.cloudera.com/cloudera-helm/csm-operator/schema-registry 
+
+helm upgrade --install cloudera-surveyor oci://container.repository.cloudera.com/cloudera-helm/csm-operator/surveyor \
+  --namespace cld-streaming \
+  --version 1.6.0-b99 \
+  --values kafka-surveyor.yaml \
+  --set image.imagePullSecrets=cloudera-creds \
+  --set-file clouderaLicense.fileContent=/home/tunas/license.txt
+
 TOKEN="8511465033:AAEWa8Xt10luM9c-b2DVxaA6xozrTEN09oI"
 CHAT_ID="8541049112"
 
