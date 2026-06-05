@@ -121,15 +121,12 @@ helm upgrade --install cloudera-surveyor oci://container.repository.cloudera.com
   --set image.imagePullSecrets=cloudera-creds \
   --set-file clouderaLicense.fileContent=/home/tunas/license.txt
 
-TOKEN="8511465033:AAEWa8Xt10luM9c-b2DVxaA6xozrTEN09oI"
-CHAT_ID="8541049112"
-
 if [ $? -eq 0 ]; then
     FINAL_MSG="✅ CSO Deployment completed successfully!"
 else
     FINAL_MSG="❌ CSO Deployment failed! Check deploy.log for details."
 fi
 
-curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
-     -d "chat_id=${CHAT_ID}" \
+curl -s -X POST "https://api.telegram.org/bot$TOKEN/sendMessage" \
+     -d "chat_id=$CHAT_ID" \
      -d "text=${FINAL_MSG}" > /dev/null
