@@ -173,3 +173,45 @@ Invoke-WebRequest `
  -ContentType "application/x-www-form-urlencoded" `
  | Invoke-Expression
 ```
+
+
+
+kubectl port-forward --address 0.0.0.0 service/efm 10090:10090 -n cld-streaming
+
+tunas@MINI-Gaming-G1:~$ minikube service efm -n cld-streaming
+┌───────────────┬──────┬──────────────┬───────────────────────────┐
+│   NAMESPACE   │ NAME │ TARGET PORT  │            URL            │
+├───────────────┼──────┼──────────────┼───────────────────────────┤
+│ cld-streaming │ efm  │ efm-ui/10090 │ http://192.168.49.2:30517 │
+│               │      │ metrics/9092 │ http://192.168.49.2:30608 │
+└───────────────┴──────┴──────────────┴───────────────────────────┘
+🔗  Starting tunnel for service efm.
+┌───────────────┬──────┬─────────────┬────────────────────────┐
+│   NAMESPACE   │ NAME │ TARGET PORT │          URL           │
+├───────────────┼──────┼─────────────┼────────────────────────┤
+│ cld-streaming │ efm  │             │ http://127.0.0.1:43431 │
+│               │      │             │ http://127.0.0.1:41909 │
+└───────────────┴──────┴─────────────┴────────────────────────┘
+[cld-streaming efm  http://127.0.0.1:43431
+http://127.0.0.1:41909]
+❗  Because you are using a Docker driver on linux, the terminal needs to be open to run it.
+
+### PowerShell History
+
+PS C:\Users\tunas> history
+
+  Id CommandLine
+  -- -----------
+   1 # 1. Allow the port through Windows Firewall
+   2 New-NetFirewallRule -DisplayName "EFM-Bridge-46663" -Di...
+   3 # 2. Map the traffic from your Windows LAN IP to your W...
+   4 # Replace '172.26.201.5' with your WSL Ubuntu IP (that'...
+   5 netsh interface portproxy add v4tov4 listenport=46663 l...
+   6 ipconfig
+   7 cd ..\..\Users\tunas
+   8 nano .\.wslconfig
+   9 edit .\.wslconfig
+  10 wsl --shutdown
+  11 New-NetFirewallRule -DisplayName "Allow ICMPv4-In" -Pro...
+  12 New-NetFirewallRule -DisplayName "Allow EFM Port 10090"...
+
