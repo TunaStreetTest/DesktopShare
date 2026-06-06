@@ -84,16 +84,17 @@ helm upgrade --install strimzi-cluster-operator --namespace cld-streaming --set 
 #  Warning  Failed     27s (x5 over 3m34s)  kubelet            spec.containers{postgresql}: Error: ErrImagePull
 #  Normal   BackOff    1s (x13 over 3m34s)  kubelet            spec.containers{postgresql}: Back-off pulling image "docker-private.infra.cloudera.com/cloudera_thirdparty/hardened/postgres:18.1-r0-openshift-202601250614"
 #  Warning  Failed     1s (x13 over 3m34s)  kubelet            spec.containers{postgresql}: Error: ImagePullBackOff
-#helm upgrade --install csa-operator --namespace cld-streaming \
-#    --version 1.5.0-b275 \
-#    --set 'flink-kubernetes-operator.imagePullSecrets[0].name=cloudera-creds' \
-#    --set 'ssb.sse.image.imagePullSecrets[0].name=cloudera-creds' \
-#    --set 'ssb.sqlRunner.image.imagePullSecrets[0].name=cloudera-creds' \
-#    --set 'ssb.mve.image.imagePullSecrets[0].name=cloudera-creds' \
-#    --set 'ssb.database.imagePullSecrets[0].name=cloudera-creds' \
-#    --set 'ssb.flink.image.imagePullSecrets[0].name=cloudera-creds' \
-#    --set-file flink-kubernetes-operator.clouderaLicense.fileContent=/home/tunas/license.txt \
-#    oci://container.repository.cloudera.com/cloudera-helm/csa-operator/csa-operator
+helm upgrade --install csa-operator --namespace cld-streaming \
+    --version 1.5.0-b275 \
+    --set 'flink-kubernetes-operator.imagePullSecrets[0].name=cloudera-creds' \
+    --set 'ssb.sse.image.imagePullSecrets[0].name=cloudera-creds' \
+    --set 'ssb.sqlRunner.image.imagePullSecrets[0].name=cloudera-creds' \
+    --set 'ssb.mve.image.imagePullSecrets[0].name=cloudera-creds' \
+    --set 'ssb.database.imagePullSecrets[0].name=cloudera-creds' \
+    --set 'ssb.flink.image.imagePullSecrets[0].name=cloudera-creds' \
+    --set-file flink-kubernetes-operator.clouderaLicense.fileContent=/home/tunas/license.txt \
+    --set 'ssb.database.image.repository=container.repository.cloudera.com/cloudera_thirdparty/hardened/postgres'
+    oci://container.repository.cloudera.com/cloudera-helm/csa-operator/csa-operator
 
 helm upgrade --install cfm-operator oci://container.repository.cloudera.com/cloudera-helm/cfm-operator/cfm-operator \
   --namespace cfm-streaming \
@@ -110,14 +111,14 @@ helm upgrade --install cfm-operator oci://container.repository.cloudera.com/clou
 helm upgrade --install schema-registry \
 --namespace cld-streaming \
 --version 1.6.0-b99 \
---values sr-values.yaml \
+--values /home/tunas/ClouderStreaming/sr-values.yaml \
 --set "image.imagePullSecrets[0].name=cloudera-creds" \
 oci://container.repository.cloudera.com/cloudera-helm/csm-operator/schema-registry 
 
 helm upgrade --install cloudera-surveyor oci://container.repository.cloudera.com/cloudera-helm/csm-operator/surveyor \
   --namespace cld-streaming \
   --version 1.6.0-b99 \
-  --values kafka-surveyor.yaml \
+  --values /home/tunas/ClouderStreaming/kafka-surveyor.yaml \
   --set image.imagePullSecrets=cloudera-creds \
   --set-file clouderaLicense.fileContent=/home/tunas/license.txt
 

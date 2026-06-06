@@ -36,7 +36,7 @@ else
 fi
 
 echo "=== Waiting for vLLM Server to Stabilize ==="
-kubectl rollout status deployment/vllm-server --timeout=180s
+kubectl rollout status deployment/vllm-server --timeout=6m
 
 echo "=== [6/6] Instantiating the Network Bridge ==="
 kubectl port-forward deployment/vllm-server 8000:8000 > /dev/null 2>&1 &
