@@ -17,6 +17,7 @@ minikube delete || true
 minikube start --driver=docker --container-runtime=docker --gpus=all --mount --mount-string="/usr/lib/wsl:/usr/lib/wsl" --force-systemd=true --extra-config=kubelet.cgroup-driver=systemd --cpus=12 --memory=24000
 
 minikube addons enable ingress
+minikube addons enable metrics-server
 
 kubectl create secret generic hf-token --from-literal=HF_TOKEN="$HK_TOKEN"
 
