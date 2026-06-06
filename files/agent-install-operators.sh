@@ -75,8 +75,6 @@ kubectl create secret generic nifi-admin-creds \
 
 echo "✅ All namespaces and secrets created successfully!"
 
-
-
 helm upgrade --install strimzi-cluster-operator --namespace cld-streaming --set 'image.imagePullSecrets[0].name=cloudera-creds' --set-file clouderaLicense.fileContent=/home/tunas/license.txt --set watchAnyNamespace=true oci://container.repository.cloudera.com/cloudera-helm/csm-operator/strimzi-kafka-operator --version 1.6.0-b99
 
 # this one requires vpn
@@ -111,14 +109,14 @@ helm upgrade --install cfm-operator oci://container.repository.cloudera.com/clou
 helm upgrade --install schema-registry \
 --namespace cld-streaming \
 --version 1.6.0-b99 \
---values /home/tunas/ClouderStreaming/sr-values.yaml \
+--values /home/tunas/ClouderStreamingOperators/sr-values.yaml \
 --set "image.imagePullSecrets[0].name=cloudera-creds" \
 oci://container.repository.cloudera.com/cloudera-helm/csm-operator/schema-registry 
 
 helm upgrade --install cloudera-surveyor oci://container.repository.cloudera.com/cloudera-helm/csm-operator/surveyor \
   --namespace cld-streaming \
   --version 1.6.0-b99 \
-  --values /home/tunas/ClouderStreaming/kafka-surveyor.yaml \
+  --values /home/tunas/ClouderStreamingOperators/kafka-surveyor.yaml \
   --set image.imagePullSecrets=cloudera-creds \
   --set-file clouderaLicense.fileContent=/home/tunas/license.txt
 
