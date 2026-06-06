@@ -1,0 +1,175 @@
+## How To Install Cloudera Edge Flow Manager Agent Binaries
+
+You have **MiNiFi Java** binaries, **MiNiFi C++ Windows** binaries (`.msi`), and **MiNiFi C++ Linux x86_64** binaries. EFM is a multi-tenant agent manager; it evaluates the incoming agent heartbeats using a strict coordinate layout: `${agentType}/${osArch}/${agentVersion}`.
+
+**Critical Lessons Applied:**
+1. EFM's UI validator rejects hyphens in the `osArch` name. We must use `linux` instead of `linux-x86-64`.
+2. EFM's backend validator will throw a `400 BAD_REQUEST` if there is more than exactly *one* archive file in a `binaries` leaf directory. All extensions and toolkits must be isolated into the `extensions` directory path.
+
+Here is the comprehensive, bulletproof blueprint to map, stage, pipe, and verify every single file correctly.
+
+---
+
+### Step 1: Deep Breakdown of Your Local Files to EFM Mappings
+
+Based on EFM's strict validation rules, here is exactly how your files map to the internal structure of the pod:
+
+| Local File Name | Agent Type | OS Arch (Alphanumeric) | Expected EFM Path | Target Version | Final EFM File Name |
+| --- | --- | --- | --- | --- | --- |
+| `nifi-minifi-cpp-...-bin-linux.tar.gz` | `cpp` | `linux` | `binaries` | `1.26.02` | `minifi.tar.gz` |
+| `nifi-minifi-cpp-...-extra-extensions-linux.tar.gz`| `cpp` | `linux` | `extensions` | `1.26.02` | `extra-extensions.tar.gz` |
+| `nifi-minifi-cpp-...-extra-python-components.zip` | `cpp` | `linux` | `extensions` | `1.26.02` | `extra-python-components.zip` |
+| `nifi-minifi-cpp-...-x64.msi` | `cpp` | `windows` | `binaries` | `1.26.02` | `minifi.msi` |
+| `minifi-2.24.08.0-19-bin.tar.gz` | `java` | `linux` | `binaries` | `2.24.08.0-19` | `minifi.tar.gz` |
+
+*(Note: We exclude `minifi-toolkit` from the deployment paths completely to prevent validation crashes. It is a local utility, not an agent binary).*
+
+---
+
+### Step 2: Build the Full Local Staging Tree
+
+Execute these commands to cleanly organize all targets into an exact replica of EFM's expected file tree:
+
+```bash
+# 1. Clear out the previous staging attempt
+rm -rf ~/efm-binaries/staging
+
+# 2. Generate the full directory tree for the Core Binaries
+mkdir -p ~/efm-binaries/staging/binaries/cpp/linux/1.26.02
+mkdir -p ~/efm-binaries/staging/binaries/cpp/windows/1.26.02
+mkdir -p ~/efm-binaries/staging/binaries/java/linux/2.24.08.0-19
+
+# 3. Generate the directory tree for the Extensions (crucial to avoid 400 errors)
+mkdir -p ~/efm-binaries/staging/extensions/cpp/linux/1.26.02
+
+# 4. Stage & rename C++ Linux files (Separating core vs extensions)
+cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/minifi.tar.gz
+cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-extensions-linux.tar.gz ~/efm-binaries/staging/extensions/cpp/linux/1.26.02/extra-extensions.tar.gz
+cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-python-components.zip ~/efm-binaries/staging/extensions/cpp/linux/1.26.02/extra-python-components.zip
+
+# 5. Stage & rename C++ Windows files
+cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-x64.msi ~/efm-binaries/staging/binaries/cpp/windows/1.26.02/minifi.msi
+
+# 6. Stage & rename Java Linux files
+cp ~/efm-binaries/minifi-2.24.08.0-19-bin.tar.gz ~/efm-binaries/staging/binaries/java/linux/2.24.08.0-19/minifi.tar.gz
+
+```
+
+---
+
+### Step 3: Stream Everything via a Single Bulletproof Tar Pipe
+
+We will use a raw `sh` tar pipe to stream the entire staging layout (both binaries and extensions) directly into the persistent mount volume in one shot. To prevent any old ghost files (like the Java toolkit or nested directories from previous attempts) from surviving and triggering a 400 validation error, we must wipe the target directories first.
+
+Run this multi-command sequence:
+
+```bash
+# 1. Secure the active pod identifier
+EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
+
+# 2. WIPE the old deployment targets to guarantee a totally clean slate
+kubectl exec -it $EFM_POD -n cld-streaming -- sh -c "rm -rf /opt/efm/efm-2.3.1.0-2/agent-deployer/binaries /opt/efm/efm-2.3.1.0-2/agent-deployer/extensions"
+
+# 3. Explicitly build the fresh top-level parent targets on the PVC volume mount
+kubectl exec -it $EFM_POD -n cld-streaming -- sh -c "mkdir -p /opt/efm/efm-2.3.1.0-2/agent-deployer/binaries /opt/efm/efm-2.3.1.0-2/agent-deployer/extensions"
+
+# 4. Stream the entire structured local block directly into the deployment engine path
+tar -cf - -C ~/efm-binaries/staging/ . | kubectl exec -i $EFM_POD -n cld-streaming -- tar -xf - -C /opt/efm/efm-2.3.1.0-2/agent-deployer/
+```
+
+---
+
+### Step 4: The Ultimate Verification Routine
+
+Don't guess if it worked—verify it. Run this command to trace every file sitting inside the EFM deployment structure:
+
+```bash
+kubectl exec -it $EFM_POD -n cld-streaming -- find /opt/efm/efm-2.3.1.0-2/agent-deployer/ -type f | grep -E "binaries|extensions" | sort
+
+```
+
+#### Your output must match this exact tree:
+
+```text
+/opt/efm/efm-2.3.1.0-2/agent-deployer/binaries/cpp/linux/1.26.02/minifi.tar.gz
+/opt/efm/efm-2.3.1.0-2/agent-deployer/binaries/cpp/windows/1.26.02/minifi.msi
+/opt/efm/efm-2.3.1.0-2/agent-deployer/binaries/java/linux/2.24.08.0-19/minifi.tar.gz
+/opt/efm/efm-2.3.1.0-2/agent-deployer/extensions/cpp/linux/1.26.02/extra-extensions.tar.gz
+/opt/efm/efm-2.3.1.0-2/agent-deployer/extensions/cpp/linux/1.26.02/extra-python-components.zip
+
+```
+
+---
+
+### Step 5: Force EFM to Re-index the World
+
+Bounce the deployment tracking layout so that the Spring Boot context wakes up and registers the clean, validated configurations:
+
+```bash
+kubectl rollout restart deployment/efm -n cld-streaming
+kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
+
+```
+
+Go open or refresh your browser tab at `http://localhost:10090/efm/ui` (or your proxy interface address). The UI dropdown will now cleanly display **`v1.26.02 - linux`**, **`v1.26.02 - windows`**, and **`v2.24.08.0-19 - linux`**. Clicking them to generate the scripts will successfully pass both UI and Backend validation.
+
+### Working Edge Flow Manager Deploy Agent CLI Command Samples
+
+java 
+
+```
+curl -L \
+ -d agentClass=test \
+ -d agentIdentifier=e9faec53-6301-4ba1-a9e9-2403674ccdb2 \
+ -d agentType=java \
+ -d agentVersion=2.24.08.0-19 \
+ -d autoConfigureSecurity=false \
+ -d baseUrl=http%3A%2F%2F127.0.0.1%3A46663%2Fefm%2Fapi \
+ -d hbPeriod=5000 \
+ -d osArch=linux \
+ -d serviceName=minifi \
+ -d serviceUser=minifi \
+ -d trustSelfSignedCertificates=false \
+ http://127.0.0.1:46663/efm/api/agent-deployer/script | bash -
+```
+
+cpp linux
+
+```
+curl -L \
+ -d agentClass=test \
+ -d agentIdentifier=54be1fee-9f21-4328-8b86-3b1c5a822b0b \
+ -d agentType=cpp \
+ -d agentVersion=1.26.02 \
+ -d autoConfigureSecurity=false \
+ -d baseUrl=http%3A%2F%2F127.0.0.1%3A46663%2Fefm%2Fapi \
+ -d hbPeriod=5000 \
+ -d osArch=linux \
+ -d serviceName=minifi \
+ -d serviceUser=minifi \
+ -d trustSelfSignedCertificates=false \
+ http://127.0.0.1:46663/efm/api/agent-deployer/script | bash -
+```
+
+cpp windows
+
+```bash
+Set-ExecutionPolicy Bypass -Scope Process -Force;`
+Invoke-WebRequest `
+ -Uri http://127.0.0.1:46663/efm/api/agent-deployer/script `
+ -Method Post `
+ -Body ("agentClass=test" + `
+       "&agentIdentifier=a66d299f-e7a3-42ea-84cf-3669009e4596" + `
+       "&agentType=cpp" + `
+       "&agentVersion=1.26.02" + `
+       "&autoConfigureSecurity=false" + `
+       "&baseUrl=http%3A%2F%2F127.0.0.1%3A46663%2Fefm%2Fapi" + `
+       "&hbPeriod=5000" + `
+       "&osArch=windows" + `
+       "&serviceName=minifi" + `
+       "&serviceUser=minifi" + `
+       "&trustSelfSignedCertificates=false") `
+ -UseBasicParsing `
+ -ContentType "application/x-www-form-urlencoded" `
+ | Invoke-Expression
+```
