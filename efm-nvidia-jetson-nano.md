@@ -210,6 +210,9 @@ kubectl apply -f efm-deployment.yaml
 
 ### Download Compatible MiNiFi Java & C++ Binaries (Cloudera archive)
 
+
+[ see efm-binaries.md for complete binary delivery content ]
+
 You need binaries that match EFM 2.3.x compatibility:
 
 - **MiNiFi C++** → 1.26.02 (best for Jetson Docker workflow)
@@ -479,6 +482,7 @@ tail -f minifi-1.26.02/logs/minifi-app.log
 
 The agent should appear almost immediately in the EFM UI → **Monitor** → **Agents** (under class `test`).
 
+[ I got all the binaries working at this point metrics are ready ]
 
 ### Add EFM to Your CSO Prometheus Observability
 
