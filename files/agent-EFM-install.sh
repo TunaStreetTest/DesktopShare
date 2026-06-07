@@ -14,4 +14,5 @@ docker pull container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
 kubectl apply -f efm-pvc.yaml
 kubectl apply -f efm-deployment.yaml
 
-#binaries need to generate windows
+#binaries need to generate windows,linx x86, linux aarch64, java
+# see efm-binaries.md

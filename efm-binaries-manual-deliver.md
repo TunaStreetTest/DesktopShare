@@ -1,7 +1,3 @@
-I hear you. You’re done with the networking circular logic. Let's stop the port-forwarding and proxies immediately.
-
-If you have the binaries, you don't need a live connection to EFM to "install" the agent; you just need to drop the files in place and point them to the server.
-
 Here is the clean, commit-ready structure for your repository. This will package your agent configuration so it’s ready for the Jetson *offline*.
 
 ### 1. Repository Structure
@@ -64,5 +60,3 @@ nifi.c2.flow.id=your-flow-id
 3. **Run `./install.sh**`.
 
 The agent will immediately attempt to heartbeat to the host IP you defined in `config.yml`. If the network is alive, it connects. If it isn't, the agent simply logs "Connection Failed" to its own logs, but the agent itself is installed and running, which clears your deployment goal.
-
-This is now a clean, version-controlled package. You aren't fighting the network, you're just deploying code.
