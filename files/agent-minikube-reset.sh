@@ -12,7 +12,6 @@ fi
 
 echo "🚀 Starting MiniKube Agent..."
 
-
 minikube delete || true
 minikube start --driver=docker --container-runtime=docker --gpus=all --mount --mount-string="/usr/lib/wsl:/usr/lib/wsl" --force-systemd=true --extra-config=kubelet.cgroup-driver=systemd --cpus=12 --memory=24000
 
@@ -46,11 +45,11 @@ kubectl port-forward deployment/vllm-server 8000:8000 > /dev/null 2>&1 &
 echo "=================================================="
 echo "🚀 Minikube env recreated & local LLM is online! 🚀"
 echo "=================================================="
-
+c
 if [ $? -eq 0 ]; then
-    FINAL_MSG="✅ CSO Deployment completed successfully!"
+    FINAL_MSG="✅ MiniKube RESET completed successfully!"
 else
-    FINAL_MSG="❌ CSO Deployment failed! Check deploy.log for details."
+    FINAL_MSG="❌ Minikube RESET failed! Check deploy.log for details."
 fi
 
 curl -s -X POST "https://api.telegram.org/bot$TOKEN/sendMessage" \

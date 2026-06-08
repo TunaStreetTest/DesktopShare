@@ -4,7 +4,7 @@
 set -e
 
 # 1. Sanity Check: Ensure the environment variables actually exist before running
-if [ -z "$CLOUDERA_USER" ] || [ -z "$CLOUDERA_PASS" ] || [ -z "$NIFI_ADMIN_PASS" ]; then
+if [ -z "$CLOUDERA_USER" ] || [ -z "$CLOUDERA_PASS" ] || [ -z "$NIFI_ADMIN_PASS" ] || [ -z "$TOKEN" ]; then
     echo "❌ Error: Required environment variables are not set."
     echo "Please ensure CLOUDERA_USER, CLOUDERA_PASS, and NIFI_ADMIN_PASS are defined."
     exit 1
