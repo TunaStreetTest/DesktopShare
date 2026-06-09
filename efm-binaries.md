@@ -26,26 +26,62 @@ You have **MiNiFi Java** binaries, **MiNiFi C++ Windows** binaries (`.msi`), **M
 ### Step 2: Build the Full Local Staging Tree
 
 ```bash
-# 1. Clear out the broken linux staging folder
-rm -rf ~/efm-binaries/staging/binaries/cpp/linux/1.26.02
+# ==========================================
+# 0. Clean the Staging Area
+# ==========================================
+rm -rf ~/efm-binaries/staging/
 mkdir -p ~/efm-binaries/staging/binaries/cpp/linux/1.26.02
+mkdir -p ~/efm-binaries/staging/binaries/cpp/linuxaarch64/1.26.02
+mkdir -p ~/efm-binaries/staging/binaries/cpp/windows/1.26.02
+mkdir -p ~/efm-binaries/staging/binaries/java/linux/2.24.08.0-19
 
-# 2. Unpack the base Linux agent into the staging folder
+# ==========================================
+# 1. C++ LINUX (x86_64) - Unpack, Inject, Repack
+# ==========================================
+# Unpack base
 tar -xf ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz -C ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/
 
-# 3. Create a temporary folder and unpack YOUR exact extensions file
-mkdir -p /tmp/efm-ext
-tar -xf ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-extensions-linux.tar.gz -C /tmp/efm-ext
+# Unpack and inject .so extensions
+mkdir -p /tmp/efm-ext-linux
+tar -xf ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-extensions-linux.tar.gz -C /tmp/efm-ext-linux
+find /tmp/efm-ext-linux -name "*.so" -exec cp {} ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/nifi-minifi-cpp-1.26.02/extensions/ \;
 
-# 4. Find all the .so extension files in that tarball and copy them into the base agent's extensions folder
-find /tmp/efm-ext -name "*.so" -exec cp {} ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/nifi-minifi-cpp-1.26.02/extensions/ \;
+# Unpack and inject Python components
+unzip -o ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-python-components.zip -d ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/nifi-minifi-cpp-1.26.02/
 
-# 5. Re-package it all back into a single unified minifi.tar.gz
+# Re-package and clean up
 cd ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/
 tar -czf minifi.tar.gz nifi-minifi-cpp-1.26.02/
+rm -rf nifi-minifi-cpp-1.26.02/ /tmp/efm-ext-linux
 
-# 6. Clean up the loose directories
-rm -rf nifi-minifi-cpp-1.26.02/ /tmp/efm-ext
+# ==========================================
+# 2. C++ LINUX ARM64 (aarch64) - Unpack, Inject, Repack
+# ==========================================
+# Unpack base
+tar -xf ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-bin-linux-arm64.tar.gz -C ~/efm-binaries/staging/binaries/cpp/linuxaarch64/1.26.02/
+
+# Unpack and inject .so extensions
+mkdir -p /tmp/efm-ext-arm64
+tar -xf ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-extensions-linux-arm64.tar.gz -C /tmp/efm-ext-arm64
+find /tmp/efm-ext-arm64 -name "*.so" -exec cp {} ~/efm-binaries/staging/binaries/cpp/linuxaarch64/1.26.02/nifi-minifi-cpp-1.26.02/extensions/ \;
+
+# Unpack and inject Python components
+unzip -o ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-python-components.zip -d ~/efm-binaries/staging/binaries/cpp/linuxaarch64/1.26.02/nifi-minifi-cpp-1.26.02/
+
+# Re-package and clean up
+cd ~/efm-binaries/staging/binaries/cpp/linuxaarch64/1.26.02/
+tar -czf minifi.tar.gz nifi-minifi-cpp-1.26.02/
+rm -rf nifi-minifi-cpp-1.26.02/ /tmp/efm-ext-arm64
+
+# ==========================================
+# 3. C++ WINDOWS (x64) - Direct Copy
+# ==========================================
+cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-x64.msi ~/efm-binaries/staging/binaries/cpp/windows/1.26.02/minifi.msi
+
+# ==========================================
+# 4. JAVA LINUX - Direct Copy
+# ==========================================
+cp ~/efm-binaries/minifi-2.24.08.0-19-bin.tar.gz ~/efm-binaries/staging/binaries/java/linux/2.24.08.0-19/minifi.tar.gz
 ```
 
 ---
@@ -53,17 +89,29 @@ rm -rf nifi-minifi-cpp-1.26.02/ /tmp/efm-ext
 ### Step 3: Stream via Tar Pipe
 
 ```bash
-# 1. Restart the deployment
-kubectl rollout restart deployment/efm -n cld-streaming
+# ==========================================
+# Phase A: Push Binaries to EFM Server
+# ==========================================
 
-# 2. Wait for the new pod to report ready
-kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
-
-# 3. Secure the NEW pod identifier
+# 1. Get the CURRENT running EFM pod
 EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
 
-# 4. Run the final check to ensure only the clean tar.gz file is sitting in the directory
-kubectl exec -it $EFM_POD -n cld-streaming -- find /opt/efm/efm-2.3.1.0-2/agent-deployer/ -type f | grep -E "binaries|extensions" | sort
+# 2. Stream the completed binaries directory directly into the EFM pod
+cd ~/efm-binaries/staging/
+tar -cf - binaries/ | kubectl exec -i $EFM_POD -n cld-streaming -- tar -xf - -C /opt/efm/efm-2.3.1.0-2/agent-deployer/
+
+# 3. Restart the deployment so EFM indexes the newly staged binaries
+kubectl rollout restart deployment/efm -n cld-streaming
+
+# 4. Wait for the new pod to report ready
+kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
+
+# 5. Secure the NEW pod identifier for verification
+EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
+
+# 6. Verify the files arrived safely on the EFM server (Notice: No '-t' flag!)
+kubectl exec -i $EFM_POD -n cld-streaming -- sh -c 'find /opt/efm/efm-2.3.1.0-2/agent-deployer/ -type f | grep -E "binaries" | sort'
+
 ```
 
 ---
@@ -97,6 +145,8 @@ kubectl rollout restart deployment/efm -n cld-streaming
 kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
 
 ```
+
+
 
 Go open or refresh your browser tab at `http://localhost:10090/efm/ui` (or your proxy interface address). The UI dropdown will now cleanly display **`v1.26.02 - linux`**, **`v1.26.02 - windows`**, and **`v2.24.08.0-19 - linux`**. Clicking them to generate the scripts will successfully pass both UI and Backend validation.
 
@@ -220,3 +270,56 @@ curl -L \
  http://127.0.0.1:46663/efm/api/agent-deployer/script | bash -
 
 ```
+
+
+### Check the pod for extensions
+
+
+```bash
+# ==========================================
+# Phase B: Deploy & Verify the MiNiFi Agent
+# ==========================================
+
+# 7. Delete the old agent pod so it forgets the previous installation
+kubectl delete pod minifi-agent-k8s -n cld-streaming
+
+# 8. Spin up a fresh agent pod
+kubectl apply -f minifi-agent-pod.yaml
+
+# 9. Tail the logs to watch the fresh download and installation succeed
+kubectl logs minifi-agent-k8s -n cld-streaming -f
+
+# 10. Once running, verify all extensions (including Python) exist on the agent
+kubectl exec minifi-agent-k8s -n cld-streaming -- ls -al nifi-minifi-cpp-1.26.02/extensions
+```
+
+kubectl exec minifi-agent-k8s -n cld-streaming -- ls -al nifi-minifi-cpp-1.26.02/extensions
+total 86368
+drwxr-xr-x  2 501 staff     4096 Jun  9 12:41 .
+drwxr-xr-x 10 501 staff     4096 Jun  9 12:41 ..
+-rwxr-xr-x  1 501 staff  1637704 Mar  2 23:08 libminifi-archive-extensions.so
+-rwxr-xr-x  1 501 staff 10235592 Mar  2 23:08 libminifi-aws.so
+-rwxr-xr-x  1 501 staff  5144176 Mar  2 23:08 libminifi-azure.so
+-rwxr-xr-x  1 501 staff   468304 Mar  2 23:08 libminifi-civet-extensions.so
+-rwxr-xr-x  1 501 staff 15514168 Mar  2 23:08 libminifi-couchbase.so
+-rwxr-xr-x  1 501 staff   265584 Mar  2 23:08 libminifi-elasticsearch.so
+-rwxr-xr-x  1 501 staff   142656 Jun  9 12:34 libminifi-execute-process.so
+-rwxr-xr-x  1 501 staff  5534672 Mar  2 23:08 libminifi-gcp.so
+-rwxr-xr-x  1 501 staff 14477400 Mar  2 23:08 libminifi-grafana-loki.so
+-rwxr-xr-x  1 501 staff  1130832 Mar  2 23:08 libminifi-kubernetes-extensions.so
+-rwxr-xr-x  1 501 staff  3943480 Jun  9 12:34 libminifi-llamacpp.so
+-rwxr-xr-x  1 501 staff  1002288 Jun  9 12:34 libminifi-lua-script-extension.so
+-rwxr-xr-x  1 501 staff   588224 Mar  2 23:08 libminifi-mqtt-extensions.so
+-rwxr-xr-x  1 501 staff  2826680 Jun  9 12:34 libminifi-opc-extensions.so
+-rwxr-xr-x  1 501 staff   225000 Mar  2 23:08 libminifi-procfs.so
+-rwxr-xr-x  1 501 staff   682736 Mar  2 23:08 libminifi-prometheus.so
+-rwxr-xr-x  1 501 staff    27056 Jun  9 12:34 libminifi-python-lib-loader-extension.so
+-rwxr-xr-x  1 501 staff   727816 Jun  9 12:34 libminifi-python-script-extension.so
+-rwxr-xr-x  1 501 staff  4097624 Mar  2 23:08 libminifi-rdkafka-extensions.so
+-rwxr-xr-x  1 501 staff 12408408 Mar  2 23:08 libminifi-rocksdb-repos.so
+-rwxr-xr-x  1 501 staff    84680 Jun  9 12:34 libminifi-script-extension.so
+-rwxr-xr-x  1 501 staff   241088 Mar  2 23:08 libminifi-splunk.so
+-rwxr-xr-x  1 501 staff  1152352 Mar  2 23:08 libminifi-sql.so
+-rwxr-xr-x  1 501 staff  4859776 Mar  2 23:08 libminifi-standard-processors.so
+-rwxr-xr-x  1 501 staff   245488 Mar  2 23:08 libminifi-systemd.so
+-rwxr-xr-x  1 501 staff   727816 Jun  9 12:34 minifi_native.so
