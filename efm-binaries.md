@@ -26,34 +26,26 @@ You have **MiNiFi Java** binaries, **MiNiFi C++ Windows** binaries (`.msi`), **M
 ### Step 2: Build the Full Local Staging Tree
 
 ```bash
-# 1. Clear out the previous staging attempt
-rm -rf ~/efm-binaries/staging
-
-# 2. Generate the directory tree for Core Binaries
+# 1. Clear out the broken linux staging folder
+rm -rf ~/efm-binaries/staging/binaries/cpp/linux/1.26.02
 mkdir -p ~/efm-binaries/staging/binaries/cpp/linux/1.26.02
-mkdir -p ~/efm-binaries/staging/binaries/cpp/linuxaarch64/1.26.02
-mkdir -p ~/efm-binaries/staging/binaries/cpp/windows/1.26.02
-mkdir -p ~/efm-binaries/staging/binaries/java/linux/2.24.08.0-19
 
-# 3. Generate the directory tree for Extensions
-mkdir -p ~/efm-binaries/staging/extensions/cpp/linux/1.26.02
-mkdir -p ~/efm-binaries/staging/extensions/cpp/linuxaarch64/1.26.02
+# 2. Unpack the base Linux agent into the staging folder
+tar -xf ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz -C ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/
 
-# 4. Stage C++ Linux (x86_64) files
-cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-bin-linux.tar.gz ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/minifi.tar.gz
-cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-extensions-linux.tar.gz ~/efm-binaries/staging/extensions/cpp/linux/1.26.02/extra-extensions.tar.gz
-cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-python-components.zip ~/efm-binaries/staging/extensions/cpp/linux/1.26.02/extra-python-components.zip
+# 3. Create a temporary folder and unpack YOUR exact extensions file
+mkdir -p /tmp/efm-ext
+tar -xf ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-extensions-linux.tar.gz -C /tmp/efm-ext
 
-# 5. Stage C++ Linux (ARM64/Jetson) files
-cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-bin-linux-arm64.tar.gz ~/efm-binaries/staging/binaries/cpp/linuxaarch64/1.26.02/minifi.tar.gz
-cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-extra-extensions-linux-arm64.tar.gz ~/efm-binaries/staging/extensions/cpp/linuxaarch64/1.26.02/extra-extensions.tar.gz
+# 4. Find all the .so extension files in that tarball and copy them into the base agent's extensions folder
+find /tmp/efm-ext -name "*.so" -exec cp {} ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/nifi-minifi-cpp-1.26.02/extensions/ \;
 
-# 6. Stage C++ Windows files
-cp ~/efm-binaries/nifi-minifi-cpp-1.26.02-b30-x64.msi ~/efm-binaries/staging/binaries/cpp/windows/1.26.02/minifi.msi
+# 5. Re-package it all back into a single unified minifi.tar.gz
+cd ~/efm-binaries/staging/binaries/cpp/linux/1.26.02/
+tar -czf minifi.tar.gz nifi-minifi-cpp-1.26.02/
 
-# 7. Stage Java Linux files
-cp ~/efm-binaries/minifi-2.24.08.0-19-bin.tar.gz ~/efm-binaries/staging/binaries/java/linux/2.24.08.0-19/minifi.tar.gz
-
+# 6. Clean up the loose directories
+rm -rf nifi-minifi-cpp-1.26.02/ /tmp/efm-ext
 ```
 
 ---
@@ -61,18 +53,17 @@ cp ~/efm-binaries/minifi-2.24.08.0-19-bin.tar.gz ~/efm-binaries/staging/binaries
 ### Step 3: Stream via Tar Pipe
 
 ```bash
-# 1. Secure the active pod identifier
+# 1. Restart the deployment
+kubectl rollout restart deployment/efm -n cld-streaming
+
+# 2. Wait for the new pod to report ready
+kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
+
+# 3. Secure the NEW pod identifier
 EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
 
-# 2. WIPE the old deployment targets to guarantee a clean slate
-kubectl exec -it $EFM_POD -n cld-streaming -- sh -c "rm -rf /opt/efm/efm-2.3.1.0-2/agent-deployer/binaries /opt/efm/efm-2.3.1.0-2/agent-deployer/extensions"
-
-# 3. Explicitly build the fresh top-level parent targets
-kubectl exec -it $EFM_POD -n cld-streaming -- sh -c "mkdir -p /opt/efm/efm-2.3.1.0-2/agent-deployer/binaries /opt/efm/efm-2.3.1.0-2/agent-deployer/extensions"
-
-# 4. Stream the local block
-tar -cf - -C ~/efm-binaries/staging/ . | kubectl exec -i $EFM_POD -n cld-streaming -- tar -xf - -C /opt/efm/efm-2.3.1.0-2/agent-deployer/
-
+# 4. Run the final check to ensure only the clean tar.gz file is sitting in the directory
+kubectl exec -it $EFM_POD -n cld-streaming -- find /opt/efm/efm-2.3.1.0-2/agent-deployer/ -type f | grep -E "binaries|extensions" | sort
 ```
 
 ---

@@ -1,0 +1,491 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+                                                                                                                        Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows                                                                                                                                                       PS C:\WINDOWS\system32> Set-ExecutionPolicy Bypass -Scope Process -Force;`                                              >> Invoke-WebRequest `
+>>  -Uri http://127.0.0.1:42779/efm/api/agent-deployer/script `
+>>  -Method Post `
+>>  -Body ("agentClass=WindowsDesktop" + `
+>>        "&agentIdentifier=2fcc8516-23cc-4f88-90eb-ce74e15bf36a" + `
+>>        "&agentType=cpp" + `
+>>        "&agentVersion=1.26.02" + `
+>>        "&autoConfigureSecurity=false" + `
+>>        "&baseUrl=http%3A%2F%2F127.0.0.1%3A42779%2Fefm%2Fapi" + `
+>>        "&hbPeriod=5000" + `
+>>        "&osArch=windows" + `
+>>        "&serviceName=minifi" + `
+>>        "&serviceUser=minifi" + `
+>>        "&trustSelfSignedCertificates=false") `
+>>  -UseBasicParsing `
+>>  -ContentType "application/x-www-form-urlencoded" `
+>>  | Invoke-Expression
+>>
+ _______ __ _______ __ _______ __      __             __         __ __
+|   |   |__|    |  |__|    ___|__|    |__.-----.-----|  |_.---.-|  |  .-----.----.
+|       |  |       |  |    ___|  |    |  |     |__ --|   _|  _  |  |  |  -__|   _|
+|__|_|__|__|__|____|__|___|   |__|    |__|__|__|_____|____|___._|__|__|_____|__|
+The service 'Apache NiFi MiNiFi' already exists on your system. It will be updated during the installation.
+
+CommandType     Name                                               Version    Source
+-----------     ----                                               -------    ------
+Application     tar.exe                                            10.0.26... C:\WINDOWS\system32\tar.exe
+Download MiNiFi...
+This may take a while, agent is downloading... /
+Download complete!
+Unpack MiNiFi...
+Configuring MiNiFi...
+Starting MiNiFi...
+The service 'Apache NiFi MiNiFi' is running.
+Installation has successfully completed.
+
+In addition to the existing (default) configuration values, the following have been applied:
+---
+nifi.c2.agent.class=WindowsDesktop
+nifi.c2.agent.heartbeat.period=5000
+nifi.c2.agent.identifier=2fcc8516-23cc-4f88-90eb-ce74e15bf36a
+nifi.c2.enable=true
+nifi.c2.rest.path.acknowledge=/c2-protocol/acknowledge
+nifi.c2.rest.path.base=http://127.0.0.1:42779/efm/api
+nifi.c2.rest.path.heartbeat=/c2-protocol/heartbeat
+nifi.c2.rest.url.ack=http://127.0.0.1:42779/efm/api/c2-protocol/acknowledge
+nifi.c2.rest.url=http://127.0.0.1:42779/efm/api/c2-protocol/heartbeat
+---
+
+If you would like to modify this configuration, you need to perform these steps:
+
+1) Stop MiNiFi with "C:\WINDOWS\system32\nifi-minifi-cpp\bin\minifi.exe stop"
+2) Edit the files located in "C:\WINDOWS\system32\nifi-minifi-cpp\conf"
+3) Start MiNiFi with "C:\WINDOWS\system32\nifi-minifi-cpp\bin\minifi.exe start"
+
+
+PS C:\WINDOWS\system32> curl.exe -X POST "http://192.168.1.100:8080/your-endpoint" -H "Content-Type: application/json" -d '{"id":"test-1","message":"hello from curl","timestamp":"2026-06-08T20:00:00Z"}' -v
+Note: Unnecessary use of -X or --request, POST is already inferred.
+*   Trying 192.168.1.100:8080...
+PS C:\WINDOWS\system32> ipconfig
+
+Windows IP Configuration
+
+
+Ethernet adapter Ethernet:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . :
+
+Wireless LAN adapter Local Area Connection* 1:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . :
+
+Wireless LAN adapter Local Area Connection* 2:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . :
+
+Wireless LAN adapter Wi-Fi:
+
+   Connection-specific DNS Suffix  . : attlocal.net
+   IPv6 Address. . . . . . . . . . . : 2600:1702:510:82f0::c
+   IPv6 Address. . . . . . . . . . . : 2600:1702:510:82f0:4625:e86b:e067:f174
+   Temporary IPv6 Address. . . . . . : 2600:1702:510:82f0:893:4520:e7de:a5a
+   Temporary IPv6 Address. . . . . . : 2600:1702:510:82f0:9180:8671:b5a6:e042
+   Temporary IPv6 Address. . . . . . : 2600:1702:510:82f0:c9c5:8dd2:d304:4a7c
+   Link-local IPv6 Address . . . . . : fe80::47dc:3ff4:29f2:4bc2%7
+   IPv4 Address. . . . . . . . . . . : 192.168.1.121
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . : fe80::b663:6fff:fe10:6c52%7
+                                       192.168.1.254
+
+Ethernet adapter Bluetooth Network Connection:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . :
+
+Ethernet adapter vEthernet (WSL (Hyper-V firewall)):
+
+   Connection-specific DNS Suffix  . :
+   Link-local IPv6 Address . . . . . : fe80::b711:79b2:6f78:e7a1%39
+   IPv4 Address. . . . . . . . . . . : 172.26.192.1
+   Subnet Mask . . . . . . . . . . . : 255.255.240.0
+   Default Gateway . . . . . . . . . :
+PS C:\WINDOWS\system32> curl.exe -X POST "http://192.168.1.121:8080/your-endpoint" -H "Content-Type: application/json" -d '{"id":"test-1","message":"hello from curl","timestamp":"2026-06-08T20:00:00Z"}' -v
+Note: Unnecessary use of -X or --request, POST is already inferred.
+*   Trying 192.168.1.121:8080...
+* Established connection to 192.168.1.121 (192.168.1.121 port 8080) from 192.168.1.121 port 61105
+* using HTTP/1.x
+> POST /your-endpoint HTTP/1.1
+> Host: 192.168.1.121:8080
+> User-Agent: curl/8.19.0
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 66
+>
+* upload completely sent off: 66 bytes
+< HTTP/1.1 404 Not Found
+< Cache-Control: no-cache, no-store, must-revalidate, private, max-age=0
+< Expires: 0
+< Pragma: no-cache
+< Content-Type: text/plain; charset=utf-8
+< Date: Tue, 09 Jun 2026 00:06:32 GMT
+< Connection: close
+<
+Error 404: Not Found
+Not Found* shutting down connection #0
+PS C:\WINDOWS\system32> curl.exe -v "http://192.168.1.121:8080/"
+*   Trying 192.168.1.121:8080...
+* Established connection to 192.168.1.121 (192.168.1.121 port 8080) from 192.168.1.121 port 60620
+* using HTTP/1.x
+> GET / HTTP/1.1
+> Host: 192.168.1.121:8080
+> User-Agent: curl/8.19.0
+> Accept: */*
+>
+* Request completely sent off
+< HTTP/1.1 404 Not Found
+< Cache-Control: no-cache, no-store, must-revalidate, private, max-age=0
+< Expires: 0
+< Pragma: no-cache
+< Content-Type: text/plain; charset=utf-8
+< Date: Tue, 09 Jun 2026 00:07:28 GMT
+< Connection: close
+<
+Error 404: Not Found
+Not Found* shutting down connection #0
+PS C:\WINDOWS\system32> Get-Content -Path "C:\WINDOWS\system32\nifi-minifi-cpp\logs\minifi-app.log" -Wait -Tail 50
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99981
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99982
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99983
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99984
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99985
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99986
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99987
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99988
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99989
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-9999
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99990
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99991
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99992
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99993
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99994
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99995
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99996
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99997
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99998
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99999
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::FlowController] [info] Loaded flow repository
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::FlowController] [info] Starting Flow Controller
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::core::controller::StandardControllerServiceProvider] [info] Enabling 0 controller services
+[2026-06-08 20:04:24.245] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Always Persist property: false
+[2026-06-08 20:04:24.245] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Auto Persistence Interval property: 60000ms
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::Properties] [info] Using configuration file to load configuration for  from C:\WINDOWS\system32\nifi-minifi-cpp\conf\bootstrap.conf (located at C:\Windows\System32\nifi-minifi-cpp\conf\bootstrap.conf)
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::utils::crypto::EncryptionManager] [info] No encryption key found for 'nifi.state.storage.local.encryption.key'
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::Properties] [info] Using configuration file to load configuration for  from C:\WINDOWS\system32\nifi-minifi-cpp\conf\bootstrap.conf (located at C:\Windows\System32\nifi-minifi-cpp\conf\bootstrap.conf)
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::utils::crypto::EncryptionManager] [info] No encryption key found for 'nifi.state.management.provider.local.encryption.key'
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Using plaintext RocksDbStateStorage
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Acquiring database handle 'corecomponentstate'
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Simple directory detected 'corecomponentstate', using as is
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Opening rocksdb database 'corecomponentstate'
+[2026-06-08 20:04:24.298] [org::apache::nifi::minifi::processors::PublishKafka] [info] PublishKafka registering 0 librdkafka dynamic properties (e9c1fb42-748e-4fd4-a6ac-9ceed132ba72)
+[2026-06-08 20:04:24.300] [org::apache::nifi::minifi::processors::ListenHTTP] [info] ListenHTTP starting HTTP server on port 8080 and path /contentListener with 1 threads (642b5495-5ce2-4462-a7d6-a52af08ed60c)
+[2026-06-08 20:04:24.302] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:04:24.302] [org::apache::nifi::minifi::core::ProcessGroup] [info] Retrying failed processors in 30000ms
+[2026-06-08 20:04:24.303] [org::apache::nifi::minifi::FlowController] [info] Started Flow Controller
+[2026-06-08 20:04:24.307] [org::apache::nifi::minifi::core::FlowConfiguration] [info] Successfully updated the flow configuration file ./conf/config.yml
+[2026-06-08 20:04:24.310] [org::apache::nifi::minifi::Properties] [info] Persisted C:\Windows\System32\nifi-minifi-cpp\conf\minifi.properties.d\90_c2.properties
+[2026-06-08 20:04:54.309] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:05:24.318] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:05:54.331] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:06:24.332] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:06:54.340] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:07:24.352] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:07:54.364] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:08:24.379] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:08:54.383] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:09:24.386] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:09:54.394] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:10:24.401] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:10:54.408] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:11:24.417] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+PS C:\WINDOWS\system32> Invoke-RestMethod -Uri "http://127.0.0.1:8080/contentListener" -Method Post -Body "Hello MiNiFi, this is a test payload!"                   Get-Content -Path "C:\WINDOWS\system32\nifi-minifi-cpp\logs\minifi-app.log" -Wait -Tail 50
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99987
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99988
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99989
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-9999
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99990
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99991
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99992
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99993
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99994
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99995
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99996
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99997
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99998
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99999
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::FlowController] [info] Loaded flow repository
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::FlowController] [info] Starting Flow Controller
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::core::controller::StandardControllerServiceProvider] [info] Enabling 0 controller services
+[2026-06-08 20:04:24.245] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Always Persist property: false
+[2026-06-08 20:04:24.245] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Auto Persistence Interval property: 60000ms
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::Properties] [info] Using configuration file to load configuration for  from C:\WINDOWS\system32\nifi-minifi-cpp\conf\bootstrap.conf (located at C:\Windows\System32\nifi-minifi-cpp\conf\bootstrap.conf)
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::utils::crypto::EncryptionManager] [info] No encryption key found for 'nifi.state.storage.local.encryption.key'
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::Properties] [info] Using configuration file to load configuration for  from C:\WINDOWS\system32\nifi-minifi-cpp\conf\bootstrap.conf (located at C:\Windows\System32\nifi-minifi-cpp\conf\bootstrap.conf)
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::utils::crypto::EncryptionManager] [info] No encryption key found for 'nifi.state.management.provider.local.encryption.key'
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Using plaintext RocksDbStateStorage
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Acquiring database handle 'corecomponentstate'
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Simple directory detected 'corecomponentstate', using as is
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Opening rocksdb database 'corecomponentstate'
+[2026-06-08 20:04:24.298] [org::apache::nifi::minifi::processors::PublishKafka] [info] PublishKafka registering 0 librdkafka dynamic properties (e9c1fb42-748e-4fd4-a6ac-9ceed132ba72)
+[2026-06-08 20:04:24.300] [org::apache::nifi::minifi::processors::ListenHTTP] [info] ListenHTTP starting HTTP server on port 8080 and path /contentListener with 1 threads (642b5495-5ce2-4462-a7d6-a52af08ed60c)
+[2026-06-08 20:04:24.302] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:04:24.302] [org::apache::nifi::minifi::core::ProcessGroup] [info] Retrying failed processors in 30000ms
+[2026-06-08 20:04:24.303] [org::apache::nifi::minifi::FlowController] [info] Started Flow Controller
+[2026-06-08 20:04:24.307] [org::apache::nifi::minifi::core::FlowConfiguration] [info] Successfully updated the flow configuration file ./conf/config.yml
+[2026-06-08 20:04:24.310] [org::apache::nifi::minifi::Properties] [info] Persisted C:\Windows\System32\nifi-minifi-cpp\conf\minifi.properties.d\90_c2.properties
+[2026-06-08 20:04:54.309] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:05:24.318] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:05:54.331] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:06:24.332] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:06:54.340] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:07:24.352] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:07:54.364] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:08:24.379] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:08:54.383] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:09:24.386] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:09:54.394] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:10:24.401] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:10:54.408] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:11:24.417] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:11:54.419] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:11:57.363] [org::apache::nifi::minifi::processors::ListenHTTP] [warning] ListenHTTP buffer is NOT full 1/5, 'POST' request for '/contentListener' uri was dropped
+[2026-06-08 20:12:24.428] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+PS C:\WINDOWS\system32> Invoke-RestMethod -Uri "http://127.0.0.1:8080/contentListener" `
+>>                   -Method Post `
+>>                   -ContentType "text/plain" `
+>>                   -Body "Hello MiNiFi, this is a test payload!"
+
+PS C:\WINDOWS\system32> Get-Content -Path "C:\WINDOWS\system32\nifi-minifi-cpp\logs\minifi-app.log" -Wait -Tail 50
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-9999
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99990
+[2026-06-08 20:04:23.733] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99991
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99992
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99993
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99994
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99995
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99996
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99997
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99998
+[2026-06-08 20:04:23.734] [org::apache::nifi::minifi::core::repository::DatabaseContentRepository] [error] Deleting orphan resource C:\WINDOWS\system32\nifi-minifi-cpp/content_repository/80d255ef-6396-11f1-a1f2-c48b66d5e900-99999
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::FlowController] [info] Loaded flow repository
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::FlowController] [info] Starting Flow Controller
+[2026-06-08 20:04:24.244] [org::apache::nifi::minifi::core::controller::StandardControllerServiceProvider] [info] Enabling 0 controller services
+[2026-06-08 20:04:24.245] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Always Persist property: false
+[2026-06-08 20:04:24.245] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Auto Persistence Interval property: 60000ms
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::Properties] [info] Using configuration file to load configuration for  from C:\WINDOWS\system32\nifi-minifi-cpp\conf\bootstrap.conf (located at C:\Windows\System32\nifi-minifi-cpp\conf\bootstrap.conf)
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::utils::crypto::EncryptionManager] [info] No encryption key found for 'nifi.state.storage.local.encryption.key'
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::Properties] [info] Using configuration file to load configuration for  from C:\WINDOWS\system32\nifi-minifi-cpp\conf\bootstrap.conf (located at C:\Windows\System32\nifi-minifi-cpp\conf\bootstrap.conf)
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::utils::crypto::EncryptionManager] [info] No encryption key found for 'nifi.state.management.provider.local.encryption.key'
+[2026-06-08 20:04:24.246] [org::apache::nifi::minifi::controllers::RocksDbStateStorage] [info] Using plaintext RocksDbStateStorage
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Acquiring database handle 'corecomponentstate'
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Simple directory detected 'corecomponentstate', using as is
+[2026-06-08 20:04:24.247] [org::apache::nifi::minifi::internal::RocksDatabase] [info] Opening rocksdb database 'corecomponentstate'
+[2026-06-08 20:04:24.298] [org::apache::nifi::minifi::processors::PublishKafka] [info] PublishKafka registering 0 librdkafka dynamic properties (e9c1fb42-748e-4fd4-a6ac-9ceed132ba72)
+[2026-06-08 20:04:24.300] [org::apache::nifi::minifi::processors::ListenHTTP] [info] ListenHTTP starting HTTP server on port 8080 and path /contentListener with 1 threads (642b5495-5ce2-4462-a7d6-a52af08ed60c)
+[2026-06-08 20:04:24.302] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:04:24.302] [org::apache::nifi::minifi::core::ProcessGroup] [info] Retrying failed processors in 30000ms
+[2026-06-08 20:04:24.303] [org::apache::nifi::minifi::FlowController] [info] Started Flow Controller
+[2026-06-08 20:04:24.307] [org::apache::nifi::minifi::core::FlowConfiguration] [info] Successfully updated the flow configuration file ./conf/config.yml
+[2026-06-08 20:04:24.310] [org::apache::nifi::minifi::Properties] [info] Persisted C:\Windows\System32\nifi-minifi-cpp\conf\minifi.properties.d\90_c2.properties
+[2026-06-08 20:04:54.309] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:05:24.318] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:05:54.331] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:06:24.332] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:06:54.340] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:07:24.352] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:07:54.364] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:08:24.379] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:08:54.383] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:09:24.386] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:09:54.394] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:10:24.401] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:10:54.408] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:11:24.417] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:11:54.419] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:11:57.363] [org::apache::nifi::minifi::processors::ListenHTTP] [warning] ListenHTTP buffer is NOT full 1/5, 'POST' request for '/contentListener' uri was dropped
+[2026-06-08 20:12:24.428] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:12:54.438] [org::apache::nifi::minifi::core::ProcessGroup] [error] Failed to start processor b407be9e-50ec-467d-8d1b-4746d426c024 (ExecuteScript): Process Schedule Operation: Could not instantiate: PythonScriptExecutor. Make sure that the python scripting extension is loaded
+[2026-06-08 20:12:55.759] [org::apache::nifi::minifi::processors::ListenHTTP] [warning] ListenHTTP buffer is NOT full 1/5, 'POST' request for '/contentListener' uri was dropped
+PS C:\WINDOWS\system32> Invoke-RestMethod -Uri "http://127.0.0.1:8080/contentListener" `
+>>                   -Method Post `
+>>                   -ContentType "text/plain" `
+>>                   -Body "Hello MiNiFi, this is a test payload!"
+
+PS C:\WINDOWS\system32> cd .\nifi-minifi-cpp\
+PS C:\WINDOWS\system32\nifi-minifi-cpp> ls
+
+
+    Directory: C:\WINDOWS\system32\nifi-minifi-cpp
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----          6/8/2026   8:02 PM                asset
+d-----          6/8/2026   8:02 PM                bin
+d-----          6/8/2026   8:02 PM                conf
+d-----          6/8/2026   8:16 PM                content_repository
+d-----          6/8/2026   8:04 PM                corecomponentstate
+d-----          6/8/2026   8:02 PM                extensions
+d-----          6/8/2026   8:02 PM                fips
+d-----          6/8/2026   8:16 PM                flowfile_repository
+d-----          6/8/2026   8:04 PM                logs
+d-----          6/8/2026   8:02 PM                minifi-python
+d-----          6/8/2026   8:02 PM                minifi-python-examples
+d-----          6/8/2026   8:02 PM                tzdata
+-a----          6/8/2026   8:02 PM             20 .device_id
+-a----          3/3/2026   3:59 PM          25392 C2.md
+-a----          3/3/2026   3:59 PM           9573 CONAN.md
+-a----          3/3/2026   3:59 PM          60377 CONFIGURE.md
+-a----          3/3/2026   3:59 PM           7983 CONTRIBUTING.md
+-a----          3/3/2026   3:59 PM          43014 CONTROLLERS.md
+-a----          3/3/2026   3:59 PM          67664 EXPRESSIONS.md
+-a----          3/3/2026   3:59 PM           3783 Extensions.md
+-a----          3/3/2026   3:59 PM         186601 LICENSE
+-a----          6/8/2026   8:02 PM              0 LOCK
+-a----          3/3/2026   3:59 PM          24200 METRICS.md
+-a----          3/3/2026   3:59 PM           6684 NOTICE
+-a----          3/3/2026   3:59 PM           8801 OPS.md
+-a----          3/3/2026   3:59 PM           3656 PARAMETER_PROVIDERS.md
+-a----          3/3/2026   3:59 PM         621191 PROCESSORS.md
+-a----          3/3/2026   3:59 PM          46856 README.md
+-a----          3/3/2026   3:59 PM           6785 SITE_TO_SITE.md
+-a----          3/3/2026   3:59 PM          24109 ThirdParties.md
+-a----          3/3/2026   3:59 PM          10625 Windows.md
+
+
+PS C:\WINDOWS\system32\nifi-minifi-cpp> cd .\extensions\
+PS C:\WINDOWS\system32\nifi-minifi-cpp\extensions> ls
+
+
+    Directory: C:\WINDOWS\system32\nifi-minifi-cpp\extensions
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----          3/3/2026   5:01 PM        2340352 minifi-archive-extensions.dll
+-a----          3/3/2026   5:01 PM       11852288 minifi-aws.dll
+-a----          3/3/2026   5:01 PM       11923968 minifi-azure.dll
+-a----          3/3/2026   5:01 PM        8622592 minifi-civet-extensions.dll
+-a----          3/3/2026   5:01 PM        9138688 minifi-elasticsearch.dll
+-a----          3/3/2026   5:01 PM       13319680 minifi-gcp.dll
+-a----          3/3/2026   5:01 PM       21433856 minifi-grafana-loki.dll
+-a----          3/3/2026   5:01 PM        8698368 minifi-mqtt-extensions.dll
+-a----          3/3/2026   5:01 PM        7030784 minifi-pdh.dll
+-a----          3/3/2026   5:01 PM        8571904 minifi-prometheus.dll
+-a----          3/3/2026   5:01 PM       12041728 minifi-rdkafka-extensions.dll
+-a----          3/3/2026   5:01 PM       20144640 minifi-rocksdb-repos.dll
+-a----          3/3/2026   5:01 PM         580608 minifi-script-extension.dll
+-a----          3/3/2026   5:01 PM        1094144 minifi-smb.dll
+-a----          3/3/2026   5:01 PM        9213440 minifi-splunk.dll
+-a----          3/3/2026   5:01 PM        1362944 minifi-sql.dll
+-a----          3/3/2026   5:01 PM       15137280 minifi-standard-processors.dll
+-a----          3/3/2026   5:01 PM        1339904 minifi-wel.dll
+
+
+PS C:\WINDOWS\system32\nifi-minifi-cpp\extensions> cd ..
+PS C:\WINDOWS\system32\nifi-minifi-cpp> ls
+
+
+    Directory: C:\WINDOWS\system32\nifi-minifi-cpp
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----          6/8/2026   8:02 PM                asset
+d-----          6/8/2026   8:02 PM                bin
+d-----          6/8/2026   8:02 PM                conf
+d-----          6/8/2026   8:16 PM                content_repository
+d-----          6/8/2026   8:04 PM                corecomponentstate
+d-----          6/8/2026   8:02 PM                extensions
+d-----          6/8/2026   8:02 PM                fips
+d-----          6/8/2026   8:16 PM                flowfile_repository
+d-----          6/8/2026   8:04 PM                logs
+d-----          6/8/2026   8:02 PM                minifi-python
+d-----          6/8/2026   8:02 PM                minifi-python-examples
+d-----          6/8/2026   8:02 PM                tzdata
+-a----          6/8/2026   8:02 PM             20 .device_id
+-a----          3/3/2026   3:59 PM          25392 C2.md
+-a----          3/3/2026   3:59 PM           9573 CONAN.md
+-a----          3/3/2026   3:59 PM          60377 CONFIGURE.md
+-a----          3/3/2026   3:59 PM           7983 CONTRIBUTING.md
+-a----          3/3/2026   3:59 PM          43014 CONTROLLERS.md
+-a----          3/3/2026   3:59 PM          67664 EXPRESSIONS.md
+-a----          3/3/2026   3:59 PM           3783 Extensions.md
+-a----          3/3/2026   3:59 PM         186601 LICENSE
+-a----          6/8/2026   8:02 PM              0 LOCK
+-a----          3/3/2026   3:59 PM          24200 METRICS.md
+-a----          3/3/2026   3:59 PM           6684 NOTICE
+-a----          3/3/2026   3:59 PM           8801 OPS.md
+-a----          3/3/2026   3:59 PM           3656 PARAMETER_PROVIDERS.md
+-a----          3/3/2026   3:59 PM         621191 PROCESSORS.md
+-a----          3/3/2026   3:59 PM          46856 README.md
+-a----          3/3/2026   3:59 PM           6785 SITE_TO_SITE.md
+-a----          3/3/2026   3:59 PM          24109 ThirdParties.md
+-a----          3/3/2026   3:59 PM          10625 Windows.md
+
+
+PS C:\WINDOWS\system32\nifi-minifi-cpp> cd extensions
+PS C:\WINDOWS\system32\nifi-minifi-cpp\extensions> ls
+
+
+    Directory: C:\WINDOWS\system32\nifi-minifi-cpp\extensions
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----          3/3/2026   5:01 PM        2340352 minifi-archive-extensions.dll
+-a----          3/3/2026   5:01 PM       11852288 minifi-aws.dll
+-a----          3/3/2026   5:01 PM       11923968 minifi-azure.dll
+-a----          3/3/2026   5:01 PM        8622592 minifi-civet-extensions.dll
+-a----          3/3/2026   5:01 PM        9138688 minifi-elasticsearch.dll
+-a----          3/3/2026   5:01 PM       13319680 minifi-gcp.dll
+-a----          3/3/2026   5:01 PM       21433856 minifi-grafana-loki.dll
+-a----          3/3/2026   5:01 PM        8698368 minifi-mqtt-extensions.dll
+-a----          3/3/2026   5:01 PM        7030784 minifi-pdh.dll
+-a----          3/3/2026   5:01 PM        8571904 minifi-prometheus.dll
+-a----          3/3/2026   5:01 PM       12041728 minifi-rdkafka-extensions.dll
+-a----          3/3/2026   5:01 PM       20144640 minifi-rocksdb-repos.dll
+-a----          3/3/2026   5:01 PM         580608 minifi-script-extension.dll
+-a----          3/3/2026   5:01 PM        1094144 minifi-smb.dll
+-a----          3/3/2026   5:01 PM        9213440 minifi-splunk.dll
+-a----          3/3/2026   5:01 PM        1362944 minifi-sql.dll
+-a----          3/3/2026   5:01 PM       15137280 minifi-standard-processors.dll
+-a----          3/3/2026   5:01 PM        1339904 minifi-wel.dll
+
+
+PS C:\WINDOWS\system32\nifi-minifi-cpp\extensions> ls
+
+
+    Directory: C:\WINDOWS\system32\nifi-minifi-cpp\extensions
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----          3/3/2026   5:01 PM        2340352 minifi-archive-extensions.dll
+-a----          3/3/2026   5:01 PM       11852288 minifi-aws.dll
+-a----          3/3/2026   5:01 PM       11923968 minifi-azure.dll
+-a----          3/3/2026   5:01 PM        8622592 minifi-civet-extensions.dll
+-a----          3/3/2026   5:01 PM        9138688 minifi-elasticsearch.dll
+-a----          3/3/2026   5:01 PM       13319680 minifi-gcp.dll
+-a----          3/3/2026   5:01 PM       21433856 minifi-grafana-loki.dll
+-a----          3/3/2026   5:01 PM        8698368 minifi-mqtt-extensions.dll
+-a----          3/3/2026   5:01 PM        7030784 minifi-pdh.dll
+-a----          3/3/2026   5:01 PM        8571904 minifi-prometheus.dll
+-a----          3/3/2026   5:01 PM       12041728 minifi-rdkafka-extensions.dll
+-a----          3/3/2026   5:01 PM       20144640 minifi-rocksdb-repos.dll
+-a----          3/3/2026   5:01 PM         580608 minifi-script-extension.dll
+-a----          3/3/2026   5:01 PM        1094144 minifi-smb.dll
+-a----          3/3/2026   5:01 PM        9213440 minifi-splunk.dll
+-a----          3/3/2026   5:01 PM        1362944 minifi-sql.dll
+-a----          3/3/2026   5:01 PM       15137280 minifi-standard-processors.dll
+-a----          3/3/2026   5:01 PM        1339904 minifi-wel.dll
+
+
+PS C:\WINDOWS\system32\nifi-minifi-cpp\extensions> cd ..
+PS C:\WINDOWS\system32\nifi-minifi-cpp> cd ..
+PS C:\WINDOWS\system32>
