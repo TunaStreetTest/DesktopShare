@@ -67,7 +67,7 @@ Apply it:
 ```bash
 kubectl apply -f efm-agent-binaries-pvc.yaml
 ```
-
+[ i need to work on this, more than once my efm state is blown away,  i even have lost stuff,  not sure if i blew it away or if maybe OOM or too cluster too busy -  after doing a re-roll of EFM my last test, all classes were gone ]
 
 ### Pull the Official EFM Docker Image into Minikube
 
