@@ -67,7 +67,7 @@ Apply it:
 ```bash
 kubectl apply -f efm-agent-binaries-pvc.yaml
 ```
-
+[ i need to work on this, more than once my efm state is blown away,  i even have lost stuff,  not sure if i blew it away or if maybe OOM or too cluster too busy -  after doing a re-roll of EFM my last test, all classes were gone ]
 
 ### Pull the Official EFM Docker Image into Minikube
 
@@ -276,7 +276,7 @@ Next create `minifi-agent-pod.yaml`
 apiVersion: v1
 kind: Pod
 metadata:
-  name: minifi-agent-test
+  name: minifi-agent-k8s
   namespace: cld-streaming
 spec:
   containers:
@@ -286,10 +286,12 @@ spec:
     command: ["/bin/bash", "-c"]
     args:
     - |
-      apt-get update && apt-get install -y curl tar
+      apt-get update && apt-get install -y curl tar python3 python3-pip python3-venv
+      ln -s /usr/bin/python3 /usr/bin/python || true
+      
       curl -L \
-       -d agentClass=test \
-       -d agentIdentifier=b2c63cf5-de86-4b62-8d17-cad369af68ad \
+       -d agentClass=KubernetesPod \
+       -d agentIdentifier=e99e45f5-70f5-4847-af76-4f620b764aa9 \
        -d agentType=cpp \
        -d agentVersion=1.26.02 \
        -d autoConfigureSecurity=false \
@@ -300,7 +302,8 @@ spec:
        -d serviceUser=root \
        -d trustSelfSignedCertificates=false \
        http://efm.cld-streaming.svc:10090/efm/api/agent-deployer/script | bash -
-      tail -f /dev/null%                                      
+      
+      tail -f /dev/null                                
 ```
 
 Apply the Agent Pod:
