@@ -1,0 +1,37 @@
+layout {
+    split_direction "Horizontal"
+    
+    pane {
+        command "bash" 
+        args "-lc" "exec minikube tunnel"
+    }
+    
+    pane {
+        command "/usr/local/bin/minikube"
+        args "service" "efm" "-n" "cld-streaming"
+    }
+    
+    pane {
+        command "/usr/local/bin/minikube"
+        args "service" "cloudera-surveyor-service" "--namespace" "cld-streaming"
+    }
+    
+    pane {
+        command "/usr/local/bin/kubectl"
+        args "port-forward" "--address" "0.0.0.0" "service/my-cluster-kafka-bootstrap" "9092:9092" "-n" "cld-streaming"
+    }
+     
+    pane {
+        command "/usr/local/bin/kubectl"
+        args "port-forward" "--address" "0.0.0.0" "service/efm" "10090:10090" "-n" "cld-streaming"
+    } 
+
+    pane {
+        command "/usr/local/bin/kubectl"
+        args "port-forward" "svc/vllm-service" "8000:8000"
+    }
+    pane {
+        command "/usr/local/bin/kubectl"
+        args "port-forward" 
+    }
+}
