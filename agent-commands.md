@@ -18,7 +18,7 @@ Next the following sample commands I am using to get my Telegram chat started:
 /bash source .env && cd ClouderaStreamingOperators && kubectl apply --filename kafka-eval.yaml,kafka-nodepool.yaml --namespace cld-streaming && kubectl apply -f cluster-issuer.yaml && kubectl apply -f nifi-cluster-30-nifi2x-windows.yaml -n cfm-streaming && kubectl apply -f nifi-combined.yaml
 
 ## a git commit if chat made any repo changes
-
+/bash cd DesktopShare && git add . && git commit -m "Tuna" && git push
 
 /bash cd .config/zellij/layouts && cp kube-dev.kdl /home/tunas/DesktopShare/files/zellij-kubecolor-vtop.kdl && cp kube-service-ports.kdl /home/tunas/DesktopShare/files/zellij-sample-args.kdl && cp kube-service-ports-gemini.kdl /home/tunas/DesktopShare/kube-service-ports-cso.kdl
 
