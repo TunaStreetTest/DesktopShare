@@ -1,0 +1,12 @@
+layout {
+    split_direction "Horizontal";
+
+    pane {
+        command "/usr/bin/watch";
+	args "-n" "2" "-c" "kubecolor" "top" "pod" "-A" "--sort-by=cpu" "--force-colors" "|" "head" "-n" "11"
+    }
+
+    pane {
+        command "vtop";
+    }
+}

@@ -1,0 +1,31 @@
+layout {
+    split_direction "Horizontal";
+    pane command="bash" {
+        args "-c" "echo 'Hello from Zellij!'"
+    }
+    pane command="bash" {
+        args "-c" "i want the commands below to work"
+    }
+    pane {
+         command "bash"
+         args ["-lc", "source ~/.profile; export PATH=/usr/local/bin:$PATH; kubectl get pods -w || exec bash -l"]
+    }
+    pane {
+         command "bash" "-l"
+    }
+    pane {
+	command "bash" "-lc" "exec minikube tunnel"
+    }
+    pane {
+        command "/usr/local/bin/minikube service efm -n cld-streaming";
+    }
+    pane {
+        command "/usr/local/bin/minikube service cloudera-surveyor-service --namespace cld-streaming";
+    }
+    pane {
+        command "/usr/local/bin/kubectl port-forward --address 0.0.0.0 service/my-cluster-kafka-bootstrap 9092:9092 -n cld-streaming";
+    }
+    pane {
+        command "/usr/local/bin/kubectl port-forward svc/vllm-service 8000:8000 &";
+    }
+}
