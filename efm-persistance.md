@@ -7,35 +7,153 @@ The `ssb-postgresql` instance you already have is the correct persistent backend
 
 ### Step-by-step fix
 
-1. **Extract your EFM DB password** (so we don’t hard-code it blindly):
-   ```bash
-   kubectl get secret efm-db-pass -n cld-streaming -o jsonpath='{.data.password}' | base64 --decode
-   ```
-
-2. **Create a ConfigMap with the correct `efm.properties`**  
+1. **Create a ConfigMap with the correct `efm.properties`**  
    Run this (replace `<YOUR_PASSWORD>` with the value from step 1):
 
    ```bash
-   cat <<EOF | kubectl apply -n cld-streaming -f -
-   apiVersion: v1
-   kind: ConfigMap
-   metadata:
-     name: efm-config
-   data:
-     efm.properties: |
-       # ================== DATABASE ==================
-       efm.db.url=jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm
-       efm.db.driverClass=org.postgresql.Driver
-       efm.db.username=efm
-       efm.db.password=<YOUR_PASSWORD>
-       efm.db.maxConnections=50
-       efm.db.sqlDebug=false
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: efm-config
+  namespace: cld-streaming
+data:
+  efm.properties: |
+    # Web Server Properties
+    efm.server.address=0.0.0.0
+    efm.server.port=10090
+    efm.server.servlet.contextPath=/efm
 
-       # ================== OTHER SETTINGS (keep your existing ones) ==================
-       # Add any other properties you need here (e.g. registry, clustering, etc.)
-       # The rest of the file will use the defaults from the image.
-   EOF
+    # Cluster Properties
+    efm.cluster.enabled=false
+
+    # Web Server TLS Properties
+    efm.server.ssl.enabled=false
+    efm.server.ssl.keyStore=./conf/keystore.jks
+    efm.server.ssl.keyStoreType=jks
+    efm.server.ssl.keyStorePassword=
+    efm.server.ssl.keyPassword=
+    efm.server.ssl.trustStore=./conf/truststore.jks
+    efm.server.ssl.trustStoreType=jks
+    efm.server.ssl.trustStorePassword=
+    efm.server.ssl.clientAuth=WANT
+
+    # User Authentication Properties
+    efm.security.user.auth.enabled=false
+    efm.security.user.auth.adminIdentities=admin
+    efm.security.user.auth.autoRegisterNewUsers=true
+    efm.security.user.auth.authTokenExpiration=12h
+    efm.security.user.auth.groups.manager=INTERNAL
+    efm.security.user.auth.groups.adminIdentities=
+    efm.security.user.auth.groups.filter=.*
+    efm.security.user.certificate.enabled=false
+    efm.security.user.oidc.enabled=false
+    efm.security.user.saml.enabled=false
+    efm.security.user.knox.enabled=false
+    efm.security.user.proxy.enabled=false
+
+    # Database Properties (PostgreSQL Persistence)
+    efm.db.url=jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm
+    efm.db.driverClass=org.postgresql.Driver
+    efm.db.username=efm
+    efm.db.password=efm_password
+    efm.db.maxConnections=50
+    efm.db.sqlDebug=false
+    efm.db.l2CacheEnabled=false
+
+    # Heartbeat Properties
+    efm.heartbeat.maxAgeToKeep=0
+    efm.heartbeat.persistContent=false
+    efm.heartbeat.kafka.publishEnabled=false
+
+    # Edge Event Retention Properties
+    efm.event.cleanupInterval=30s
+    efm.event.maxAgeToKeep.debug=0m
+    efm.event.maxAgeToKeep.info=1h
+    efm.event.maxAgeToKeep.warn=1d
+    efm.event.maxAgeToKeep.error=7d
+
+    # Agent Class Flow Monitor Properties
+    efm.agentClassMonitor.interval=15s
+
+    # Agent Monitoring Properties
+    efm.monitor.maxHeartbeatInterval=5m
+    efm.monitor.agentCertExpiryWarningInterval=30d
+
+    # Operation Properties
+    efm.operation.monitoring.enabled=true
+    efm.operation.monitoring.inQueuedStateTimeoutHeartbeatRate=1.0
+    efm.operation.monitoring.inDeployedStateTimeout=5m
+    efm.operation.monitoring.inDeployedStateCheckFrequency=1m
+    efm.operation.monitoring.rollingBatchOperationsFrequency=10s
+    efm.operation.monitoring.rollingBatchOperationsSize=100
+    efm.operation.monitoring.rollingOperationsSize.update.asset=10
+    efm.operation.monitoring.rollingOperationsSize.update.configuration=100
+    efm.operation.monitoring.rollingOperationsSize.update.properties=100
+    efm.operation.monitoring.rollingOperationsSize.sync.resource=10
+
+    # Bulletin Registry Properties
+    efm.bulletinregistry.agentBulletinMaxAgeToKeep=5m
+    efm.bulletinregistry.agentClassBulletinMinAgeToKeep=10s
+    efm.bulletinregistry.agentClassBulletinMaxAgeToKeep=5m
+
+    # Metrics Properties
+    management.metrics.efm.enabled=true
+    management.simple.metrics.export.enabled=false
+    management.prometheus.metrics.export.enabled=true
+    management.prometheus.metrics.export.descriptions=true
+    management.metrics.enable.efm.heartbeat=true
+    management.metrics.enable.efm.repo=true
+    management.metrics.efm.enableTag.host=true
+    management.metrics.efm.enableTag.protocol=false
+    management.metrics.efm.enableTag.agentClass=true
+    management.metrics.efm.enableTag.agentManifestId=true
+    management.metrics.efm.enableTag.agentId=true
+    management.metrics.efm.maxTags.agentClass=20
+    management.metrics.efm.maxTags.agentManifestId=10
+    management.metrics.efm.maxTags.agentId=100
+    management.metrics.tags.application=efm
+    management.metrics.distribution.percentiles.all=.75,.95,.99
+
+    # Health and Info Properties
+    efm.actuator.clusterHealthUpdateFrequency=10s
+    efm.actuator.clusterInfoUpdateFrequency=1m
+    management.endpoint.health.showDetails=never
+    management.endpoint.health.showComponents=always
+    management.health.refresh.enabled=false
+    management.health.livenessstate.enabled=false
+    management.health.readinessstate.enabled=false
+    spring.cloud.discovery.client.compositeIndicator.enabled=false
+
+    # EL Specification Properties
+    efm.el.specifications.dir=./specs
+
+    # Logging Properties
+    logging.pattern.level=%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]
+    logging.level.com.cloudera.cem.efm=INFO
+    logging.level.com.hazelcast=WARN
+    logging.level.com.hazelcast.internal.cluster.ClusterService=INFO
+    logging.level.com.hazelcast.internal.nio.tcp.TcpIpConnection=ERROR
+    logging.level.com.hazelcast.internal.nio.tcp.TcpIpConnector=ERROR
+
+    # General System Settings
+    efm.data.transfer.maxFileSize=16MB
+    efm.data.transfer.cleanupInterval=1h
+    efm.data.transfer.maxAgeToKeep=1d
+    efm.data.transfer.maxEntriesToKeep=100
+    efm.agentManager.commands.displayLimit=20
+    spring.main.banner-mode=log
+    efm.asset.s3.downloadRootPath=/tmp/efm-asset-download
+    efm.diagnosticBundle.enabled=false
+    efm.agent-deployer.security.autoConfiguration=false
+    efm.agent-deployer.security.ca.privateKeyPassword=
+    spring.servlet.multipart.max-file-size=100MB
+    spring.servlet.multipart.max-request-size=100MB
    ```
+    Apply the Config Map:
+
+```bash
+kubectl apply -f efm-configMap.yaml -n cld-streaming
+```
 
 3. **Update your `efm-deployment.yaml`** (add the ConfigMap mount)
 
@@ -58,12 +176,11 @@ The `ssb-postgresql` instance you already have is the correct persistent backend
    - name: agent-binaries
      mountPath: /opt/efm/agent-deployer/binaries
    - name: efm-config               # ← NEW (this overrides the file)
-     mountPath: /opt/efm/conf/efm.properties
+     mountPath: /opt/efm/efm-2.3.1.0-2/conf/efm.properties
      subPath: efm.properties
      readOnly: true
    ```
-
-   (If the exact path is not `/opt/efm/conf/efm.properties`, run the command in step 4 first and adjust the `mountPath`.)
+   (If the exact path is not `/opt/efm/efm-2.3.1.0-2/conf/efm.properties`, run the command in step 4 first and adjust the `mountPath`.)
 
 4. **Verify the properties file path** (optional but recommended):
    ```bash
@@ -99,3 +216,6 @@ GRANT ALL PRIVILEGES ON DATABASE efm TO efm;
 After this change, `kubectl rollout restart deployment/efm` will **no longer** wipe your data. The agent binaries PVC you already have is correctly mounted, so that part stays safe too.
 
 Paste the output of the verification command (step 6) after you apply, and I’ll confirm it’s working or tweak anything else (e.g. if the conf path is different). This is the exact pattern used for production Docker/K8s deployments of EFM.
+
+
+

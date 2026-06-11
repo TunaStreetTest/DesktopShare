@@ -323,3 +323,38 @@ drwxr-xr-x 10 501 staff     4096 Jun  9 12:41 ..
 -rwxr-xr-x  1 501 staff  4859776 Mar  2 23:08 libminifi-standard-processors.so
 -rwxr-xr-x  1 501 staff   245488 Mar  2 23:08 libminifi-systemd.so
 -rwxr-xr-x  1 501 staff   727816 Jun  9 12:34 minifi_native.so
+
+
+The following environment configuration was determined:                                                                  │
+│                                                                                                                          │
+│ APP_NAME=efm                                                                                                             │
+│ APP_HOME=/opt/efm/efm-2.3.1.0-2                                                                                          │
+│ APP_BIN_DIR=/opt/efm/efm-2.3.1.0-2/bin                                                                                   │
+│ APP_CONF_DIR=/opt/efm/efm-2.3.1.0-2/conf                                                                                 │
+│ APP_LIB_DIR=/opt/efm/efm-2.3.1.0-2/lib                                                                                   │
+│ APP_LOG_DIR=                                                                                                             │
+│ APP_RUN_DIR=/opt/efm/efm-2.3.1.0-2/run                                                                                   │
+│ APP_BIN_FILE=/opt/efm/efm-current/bin/efm.sh                                                                             │
+│ APP_CONF_FILE=/opt/efm/efm-2.3.1.0-2/conf/efm.conf                                                                       │
+│ APP_PROPS_FILE=/opt/efm/efm-2.3.1.0-2/conf/efm.properties                                                                │
+│ APP_JAR_FILE=/opt/efm/efm-2.3.1.0-2/lib/efm.jar                                                                          │
+│ APP_CLASSPATH=/opt/efm/efm-2.3.1.0-2/conf:/opt/efm/efm-2.3.1.0-2/lib                                                     │
+│ JAVA_OPTS=-Xms2048m -Xmx2048m -XX:+UseG1GC                                                                               │
+│ RUN_ARGS=                                                                                                                │
+│ STOP_WAIT_TIME=20                                                                                                        │
+│ USE_START_STOP_DAEMON=true                              
+
+
+
+
+
+
+│   ______    ______   __    __ 
+│  /\  ___\  /\  ___\ /\ '-./  \
+│  \ \  __\  \ \  __\ \ \ \-./\ \ 
+│   \ \_____\ \ \_\    \ \_\ \ \_\   
+│    \/_____/  \/_/     \/_/  \/_/ 
+│
+│  (v2.3.1.0-2)
+│ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+│ Cloudera | CEM | Edge Flow Manager
