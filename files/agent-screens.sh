@@ -9,3 +9,6 @@ minikube tunnel
 
 # kafka 
 kubectl port-forward --address 0.0.0.0 service/my-cluster-kafka-bootstrap 9092:9092 -n cld-streaming
+
+
+# see zellij- *.kdl files for new screen panels.
