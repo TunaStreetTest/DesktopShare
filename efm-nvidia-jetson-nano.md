@@ -1,5 +1,25 @@
 **Cloudera Edge Flow Manager (EFM) with Jetson Orin Nano for AI at the Edge**
 
+```terminal
+│   ______    ______   __    __ 
+│  /\  ___\  /\  ___\ /\ '-./  \
+│  \ \  __\  \ \  __\ \ \ \-./\ \ 
+│   \ \_____\ \ \_\    \ \_\ \ \_\   
+│    \/_____/  \/_/     \/_/  \/_/ 
+│
+│  (v2.3.1.0-2)
+│ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+│ Cloudera | CEM | Edge Flow Manager
+
+     __        _____  ___ _____  _   
+  /\ \ \/\   /\\_   \/   \\_   \/_\  
+ /  \/ /\ \ / / / /\/ /\ / / /\//_\\ 
+/ /\  /  \ V /\/ /_/ /_//\/ /_/  _  \
+\_\ \/    \_/\____/___,'\____/\_/ \_/
+                                     
+
+```
+
 Hey folks, Steven Matison here. If you’ve been following my Cloudera Community posts, my GitHub pages at [cldr-steven-matison.github.io](https://cldr-steven-matison.github.io/), or the fresh content now flowing to [stevenmatison.com](https://stevenmatison.com), you know I’m all about making complex streaming, flow management, and edge AI setups actually *work* on real hardware — windows, mac, ubuntu, docker, kubernetes, and now a new NVIDIA Jetson Orin Nano.  
 
 Today we’re going deep: with local lab for **Cloudera Edge Flow Manager (EFM / CEM)**, next to the full **Cloudera Streaming Operator (CSO)** stack (CFM + CSM + CSA) on Minikube Kubernetes, and then deploying **MiNiFi C++ agents** to NVIDIA Jetson Orin Nano.  
@@ -177,7 +197,7 @@ The agent should appear almost immediately in the EFM UI → **Monitor** → **A
 
 ### 5. Deliver Resources to the Agent
 
-Agent Resources are manageable from within EFM.  Upload your files to EFM, then assign them as necessary to Agents in their own Resources tab, and they will appear in /nifi-/assets/ directory.  
+Agent Resources are manageable from within EFM.  Upload your files to EFM, then assign them as necessary to Agents in their own Resources tab, and they will appear in /assets/ directory.  
 
 **Warning** I did have to chmod +x my agent files on the Jetson.  I will work on this later but for now its an ok manual step before testing curl on the jetson.
 
