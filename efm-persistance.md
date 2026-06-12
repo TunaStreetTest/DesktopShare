@@ -201,21 +201,3 @@ kubectl apply -f efm-configMap.yaml -n cld-streaming
      find /opt/efm -name efm.properties -exec grep -E "db\.url|db\.driverClass" {} +'
    ```
    You should now see the `jdbc:postgresql://...` line.
-
-### Optional: Make sure the `efm` database exists in PostgreSQL
-```bash
-kubectl exec -it ssb-postgresql-7548cf4766-sqdp2 -n cld-streaming -- psql -U postgres -c "\l" | grep efm
-```
-If the `efm` database or user doesn’t exist, create it (EFM will auto-create tables on first start):
-```sql
-CREATE DATABASE efm;
-CREATE USER efm WITH PASSWORD '<YOUR_PASSWORD>';
-GRANT ALL PRIVILEGES ON DATABASE efm TO efm;
-```
-
-After this change, `kubectl rollout restart deployment/efm` will **no longer** wipe your data. The agent binaries PVC you already have is correctly mounted, so that part stays safe too.
-
-Paste the output of the verification command (step 6) after you apply, and I’ll confirm it’s working or tweak anything else (e.g. if the conf path is different). This is the exact pattern used for production Docker/K8s deployments of EFM.
-
-
-

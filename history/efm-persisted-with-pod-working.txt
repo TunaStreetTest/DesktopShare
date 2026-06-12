@@ -1,0 +1,94 @@
+ 1882  cd ClouderaStreamingOperators/
+ 1883  cat efm-deployment.yaml
+ 1884  PASSWORD=$(kubectl get secret efm-db-pass -n cld-streaming -o jsonpath='{.data.password}' | base64 --decode)
+ 1885  kubectl apply -f efm-configMap.yaml -n cld-streaming
+ 1886  kubectl apply -f minifi-agent-pod.yaml
+ 1887  kubectl exec minifi-agent-k8s -n cld-streaming -- ls -al nifi-minifi-cpp-1.26.02/
+ 1888  kubectl apply -f efm-deployment.yaml -n cld-streaming
+ 1889  EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
+ 1890  kubectl apply -f efm-deployment.yaml -n cld-streaming
+ 1891  kubectl exec $EFM_POD -n cld-streaming -- sh -c '
+ 1892       find /opt/efm -name efm.properties -exec grep -E "db\.url|db\.driverClass" {} +'
+ 1893  EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
+ 1894  kubectl exec $EFM_POD -n cld-streaming -- sh -c '
+ 1895       find /opt/efm -name efm.properties -exec grep -E "db\.url|db\.driverClass" {} +'
+ 1896  kubectl apply -f efm-configMap.yaml -n cld-streaming
+ 1897  kubectl delete -f efm-deployment.yaml -n cld-streaming
+ 1898  kubectl apply -f efm-deployment.yaml -n cld-streaming
+ 1899  kubectl apply -f efm-configMap.yaml -n cld-streaming
+ 1900  kubectl delete -f efm-deployment.yaml -n cld-streaming
+ 1901  kubectl apply -f efm-deployment.yaml -n cld-streaming
+ 1902  kubectl apply -f efm-configMap.yaml -n cld-streaming
+ 1903  kubectl delete -f efm-deployment.yaml -n cld-streaming
+ 1904  kubectl apply -f efm-deployment.yaml -n cld-streaming
+ 1905  kubectl apply -f efm-configMap.yaml -n cld-streaming
+ 1906  kubectl delete -f efm-deployment.yaml -n cld-streaming
+ 1907  kubectl apply -f efm-deployment.yaml -n cld-streaming
+ 1908  kubectl apply -f efm-configMap.yaml -n cld-streaming
+ 1909  kubectl delete -f efm-deployment.yaml -n cld-streaming
+ 1910  kubectl apply -f efm-deployment.yaml -n cld-streaming
+ 1911  kubectl delete -f efm-deployment.yaml -n cld-streaming
+ 1912  kubectl apply -f efm-deployment.0.yaml -n cld-streaming
+ 1913  kubectl exec -it efm-5d49d7d75b-wls4l -n cld-streaming -- cat /opt/efm/conf/efm.properties
+ 1914  kubectl exec -it efm-5d49d7d75b-wls4l -n cld-streaming -- cat /opt/efm/efm-2.3.1.0-2/conf/efm.properties
+ 1915  kubectl delete -f efm-deployment.0.yaml -n cld-streaming
+ 1916  kubectl apply -f efm-configMap.yaml -n cld-streaming
+ 1917  kubectl apply -f efm-deployment.yaml -n cld-streaming
+ 1918  kubectl exec $EFM_POD -n cld-streaming -- sh -c '
+ 1919    find /opt/efm -name efm.properties -exec grep -E "db\.url|db\.driverClass" {} +'
+ 1920  EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
+ 1921  kubectl exec $EFM_POD -n cld-streaming -- sh -c '
+ 1922    find /opt/efm -name efm.properties -exec grep -E "db\.url|db\.driverClass" {} +'
+ 1923  kubectl apply -f minifi-agent-pod.yaml
+ 1924  kubectl delete -f minifi-agent-pod.yaml
+ 1925  kubectl apply -f minifi-agent-pod.yaml
+ 1926  3 kubectl logs minifi-agent-k8s -n cld-streaming -f
+ 1927  kubectl logs minifi-agent-k8s -n cld-streaming -f
+ 1928  kubectl exec minifi-agent-k8s -n cld-streaming -- tail -f nifi-minifi-cpp-1.26.02/logs/minifi-app.log
+ 1929  kubectl delete -f minifi-agent-pod.yaml
+ 1930  kubectl apply -f minifi-agent-pod-tensorRT.yaml
+ 1931  kubectl logs minifi-agent-k8s -n cld-streaming -f
+ 1932  kubectl exec minifi-agent-k8s -n cld-streaming -- tail -f nifi-minifi-cpp-1.26.02/logs/minifi-app.log
+ 1933  kubectl logs minifi-agent-k8s -n cld-streaming -f
+ 1934  kubectl exec minifi-agent-k8s -n cld-streaming -- tail -f nifi-minifi-cpp-1.26.02/logs/minifi-app.log
+ 1935  exit
+ 1936  curl -X POST http://127.0.0.1:8888/contentListener      -H "Content-Type: application/json"      -d '{
+ 1937         "pipeline": "KubernetesPod",
+ 1938         "config": {
+ 1939           "confidence_threshold": 0.45,
+ 1940           "nms_threshold": 0.5,
+ 1941           "precision": "FP16"
+ 1942         }
+ 1943       }'
+ 1944  curl -X POST http://127.0.0.1:8888/contentListener      -H "Content-Type: application/json"      -d '{
+ 1945         "pipeline": "KubernetesPod",
+ 1946         "config": {
+ 1947           "confidence_threshold": 0.45,
+ 1948           "nms_threshold": 0.5,
+ 1949           "precision": "FP16"
+ 1950         }
+ 1951       }'
+ 1952  curl -X POST http://127.0.0.1:8888/contentListener      -H "Content-Type: application/json"      -d '{
+ 1953         "pipeline": "KubernetesPod",
+ 1954         "config": {
+ 1955           "confidence_threshold": 0.45,
+ 1956           "nms_threshold": 0.5,
+ 1957           "precision": "FP16"
+ 1958         }
+ 1959       }'
+ 1960  cd DesktopShare/
+ 1961  cd files
+ 1962  cd efm
+ 1963  find . -name "*:Zone.Identifier" -type f -delete
+ 1964  ls
+ 1965  cd ..
+ 1966  ls
+ 1967  exit
+ 1968  kubectl exec -it my-cluster-combined-0 -n cld-streaming --   /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap-server localhost:9092   --topic txn1   --from-beginning   --max-messages 10
+ 1969  kubectl exec -it my-cluster-combined-0 -n cld-streaming --   /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap-server localhost:9092   --topic agent-nvidia-tensorRT  --from-beginning   --max-messages 10
+ 1970  kubectl exec -it my-cluster-combined-0 -n cld-streaming --   /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap-server localhost:9092   --topic agent-k8s-tensorRT  --from-beginning   --max-messages 10
+ 1971  exit
+ 1972  kubectl port-forward pod/minifi-agent-k8s 8080:8080 -n cld-streaming
+ 1973  kubectl port-forward pod/minifi-agent-k8s 8888:8080 -n cld-streaming
+ 1974  exit
+ 1975  history

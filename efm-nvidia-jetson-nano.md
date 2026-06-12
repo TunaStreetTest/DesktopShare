@@ -104,93 +104,7 @@ spec:
 `efm-deployment.yaml`
 
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: efm
-  namespace: cld-streaming
-  labels:
-    app: efm
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: efm
-  template:
-    metadata:
-      labels:
-        app: efm
-    spec:
-      imagePullSecrets:
-      - name: cloudera-registry
-      containers:
-      - name: efm
-        image: container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
-        ports:
-        - containerPort: 10090
-        - containerPort: 9092
-        env:
-        - name: EF_DB_URL
-          value: "jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm"
-        - name: EF_REGISTRY_URL
-          value: "http://nifi-registry-edge-svc.cfm-streaming.svc:18080"
-        - name: EF_REGISTRY_ENABLED
-          value: "true"
-        - name: JAVA_OPTS
-          value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
-        - name: EF_JAVA_OPTS
-          value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
-        - name: EFM_DB_USER
-          value: efm
-        - name: EFM_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: efm-db-pass
-              key: password
-        - name: EFM_ENCRYPTION_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: efm-encryption
-              key: encryption.password
-        resources:
-          requests:
-            cpu: "250m"
-            memory: "4Gi"
-          limits:
-            cpu: "250m"
-            memory: "4Gi"
-        # === Agent binaries PVC mount (confirmed correct path for 2.3.x Docker image) ===
-        volumeMounts:
-        - name: agent-binaries
-          mountPath: /opt/efm/agent-deployer/binaries
-      # === PVC volume definition (must be at pod spec level, sibling to containers) ===
-      volumes:
-      - name: agent-binaries
-        persistentVolumeClaim:
-          claimName: efm-agent-binaries
-
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: efm
-  namespace: cld-streaming
-  labels:
-    app: efm
-spec:
-  type: LoadBalancer
-  ports:
-  - port: 10090
-    targetPort: 10090
-    protocol: TCP
-    name: efm-ui
-  - port: 9092
-    targetPort: 9092
-    protocol: TCP
-    name: metrics
-  selector:
-    app: efm
+get new yaml and configmap
 ```
 
 **Create the encryption secret first** (if you haven’t already):
@@ -397,11 +311,12 @@ nifi.c2.metrics.publisher.prometheus.port=9092
 ```
 The agent registers itself with EFM, EFM knows the Prometheus scrape target, or you add a static scrape in your CSO Prometheus config. My Grafana dashboard will now show Jetson CPU/GPU/temp + model inference latency + flow throughput.
 
-### 6. End-to-End Validation
+### Testing Nvidia Jetson
 
-1. Push a flow from EFM → all agents receive it within seconds.
-2. Trigger data on the Jetson (camera feed, sensor, etc.).
-3. Watch models execute locally on the Orin Nano GPU.
-4. Metrics appear in Grafana (EFM + CSO + MiNiFi all in one place).
-5. Scale: add more Jetson devices, Windows edge nodes, or K8s pods — EFM handles it.
+Flow
 
+Python Script
+
+Curl Command
+
+Kafka Messages
