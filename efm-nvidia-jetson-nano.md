@@ -275,8 +275,19 @@ Most important: TensorRT flow which is the one we want, but I also include the f
 
 [ need to add these to MiNiFi Kubernetes Playground ]
 
+ 
+### 7. Testing Nvidia Jetson Flow
+
+Chmod Command
+
+Curl Command
+
+Kafka Messages
+
 
 ### Add EFM to Your CSO Prometheus Observability
+
+[ not tested yet ]
 
 Create `efm-servicemonitor.yaml`:
 
@@ -315,16 +326,3 @@ The agent registers itself with EFM, EFM knows the Prometheus scrape target, or 
 ### Resources
 
 ### Appendix 
-
-#### Testing Nvidia Jetson
-
-Flow
-
-Python Script
-
-Curl Command
-
-Kafka Messages
-
-
-
