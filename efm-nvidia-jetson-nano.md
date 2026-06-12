@@ -34,6 +34,8 @@ kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120
 
 **Warning** it takes several minutes for EFM to re roll.  Be patient.  Use K9s or pod logs to confirm that EFM finishes startup and discloses its final hosted URLs.
 
+[ insert text here from startup log ]
+
 ### Expose EFM for Easy Access
 
 ```bash
@@ -42,11 +44,13 @@ minikube tunnel
 
 [http://127.0.0.1:10090/efm/ui](http://127.0.0.1:10090/efm/ui)
 
-[ I need to update this, we moved to the windows host IP for efm to be accessible to Jetson.  However the tunnel method is preferred since the url is consistent. Currently in windows the minikube sevice command the open port is random and you have to visit and append /efm/ui/ on end of the browser url  - better way would be appreciated ]
-
 Open that URL in your browser — you should land on the EFM login screen.
 
 Now create a class and you can get to the Deploy Agent CLI Command Screen to verify all of the binaries are there.
+
+[ insert screen shot of binary drop downs ]
+
+[ I need to update this, we moved to the windows host IP for efm to be accessible to Jetson.  However the tunnel method is preferred since the url is consistent. Currently in windows the minikube sevice command the open port is random and you have to visit and append /efm/ui/ on end of the browser url  - better way would be appreciated ]
 
 
 Go ahead and grab the Linux agent cli code:
@@ -116,18 +120,21 @@ Apply the Agent Pod:
 
 ```bash
 kubectl apply -f minifi-agent-pod.yaml
-kubectl wait --for=condition=ready pod minifi-agent-test -n cld-streaming --timeout=60s\nkubectl logs minifi-agent-test -n cld-streaming
+kubectl wait --for=condition=ready pod minifi-agent-k8s -n cld-streaming --timeout=60s\nkubectl logs minifi-agent-k8s -n cld-streaming
 ```
 
 Be patient and watch the pod log and app logs:
 
 ```bash
-kubectl logs minifi-agent-test -n cld-streaming -f
-kubectl exec -it minifi-agent-test -n cld-streaming -- tail -f /nifi-minifi-cpp-1.26.02/logs/minifi-app.log
+kubectl logs minifi-agent-k8s -n cld-streaming -f
+kubectl exec -it minifi-agent-k8s -n cld-streaming -- tail -f /nifi-minifi-cpp-1.26.02/logs/minifi-app.log
 ```
+
+[ add expected output here ]
 
 Within a few minutes Minifi should be running in the pod and the agent should appear in the `KubernetesPod` Class in the EFM Dashboard.  Win!
 
+[ screen shot here ]
 
 ### 3. Deploy the MiNiFi C++ Agent on the Jetson Orin Nano
 
@@ -164,6 +171,8 @@ tail -f minifi-1.26.02/logs/minifi-app.log
 ```
 
 The agent should appear almost immediately in the EFM UI → **Monitor** → **Agents** under class `NvidiaNano`.
+
+[ screen shot here ]
 
 ### 5. Deliver Resources to the Agent
 
@@ -264,7 +273,7 @@ Most important: TensorRT flow which is the one we want, but I also include the f
 - [WindowsDesktop](files/efm/WindowsDesktop.json) - Operational
 - [KubernetesPod](files/efm/KubernetesPod.json) - Operational
 
-[ need to add these to MiNiFi Kubernetes Playground]
+[ need to add these to MiNiFi Kubernetes Playground ]
 
 
 ### Add EFM to Your CSO Prometheus Observability
