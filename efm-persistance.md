@@ -1,16 +1,50 @@
-**✅ Root cause confirmed:** Your EFM pod is **still using the embedded H2 database** (`jdbc:h2:./database/efm`), even though you set `EF_DB_URL` + `EFM_DB_*` + `JAVA_OPTS` in the deployment.
+## How to Install Persisted EFM on Kubernetes
 
-Cloudera EFM (including the official Docker image `efm:2.3.1.0-2`) **ignores** those environment variables for database configuration. It **only** reads the database settings from the file `/opt/efm/conf/efm.properties` (this is documented behavior in all EFM 2.x versions).  
-The H2 file lives inside the container filesystem → every `rollout restart` creates a brand-new pod with a fresh/empty database → your EFM data (agents, flows, etc.) gets wiped.
+To avoid loosing data after efm pod rollouts we need to use `ssb-postgres` to persist our EFM metadata.
 
-The `ssb-postgresql` instance you already have is the correct persistent backend — we just need to make EFM actually use it.
 
-### Step-by-step fix
+### Working with Postges
 
-1. **Create a ConfigMap with the correct `efm.properties`**  
-   Run this (replace `<YOUR_PASSWORD>` with the value from step 1):
+```bash
+kubectl get pods -n cld-streaming | grep postgres
+```
 
-   ```bash
+Copy the pod name (e.g. `ssb-postgresql-abc123-xyz`).
+
+Now run these one-time psql commands **inside** that pod:
+
+```bash
+kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "CREATE DATABASE efm;"
+kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "CREATE USER efm WITH PASSWORD 'efm_password';"
+kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE efm TO efm;"
+kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "ALTER DATABASE efm OWNER TO efm;"
+```
+
+### Create the EFM Database Password Secret
+
+```bash
+kubectl create secret generic efm-db-pass \
+  --from-literal=password=efm_password \
+  --namespace cld-streaming
+```
+
+### Pull the Official EFM Docker Image into Minikube
+
+```bash
+eval $(minikube docker-env)
+docker login container.repo.cloudera.com
+docker pull container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
+```
+
+Use the exact tag that matches your CSO / CEM entitlement — 2.2.0.0-86 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
+
+### Working with EFM Deployment YAML
+
+Create these files in your working directory:
+
+`efm-configMap.yaml`
+
+```bash
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -148,56 +182,150 @@ data:
     efm.agent-deployer.security.ca.privateKeyPassword=
     spring.servlet.multipart.max-file-size=100MB
     spring.servlet.multipart.max-request-size=100MB
-   ```
-    Apply the Config Map:
+```
+
+`efm-pvc.yaml`
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efm-agent-binaries
+  namespace: cld-streaming
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: standard
+
+````
+
+`efm-deployment-persisted.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: efm
+  namespace: cld-streaming
+  labels:
+    app: efm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: efm
+  template:
+    metadata:
+      labels:
+        app: efm
+    spec:
+      imagePullSecrets:
+      - name: cloudera-registry
+      containers:
+      - name: efm
+        image: container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
+        ports:
+        - containerPort: 10090
+        - containerPort: 9092
+        env:
+        - name: EF_DB_URL
+          value: "jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm"
+        - name: EF_REGISTRY_URL
+          value: "http://host.minikube.internal:18080"
+        - name: EF_REGISTRY_ENABLED
+          value: "true"
+        - name: JAVA_OPTS
+          value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
+        - name: EF_JAVA_OPTS
+          value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
+        - name: EFM_DB_USER
+          value: efm
+        - name: EFM_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: efm-db-pass
+              key: password
+        - name: EFM_ENCRYPTION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: efm-encryption
+              key: encryption.password
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "4Gi"
+          limits:
+            cpu: "250m"
+            memory: "4Gi"
+        volumeMounts:
+        - name: agent-binaries
+          mountPath: /opt/efm/efm-2.3.1.0-2/agent-deployer/binaries
+        - name: efm-config               # ← NEW (this overrides the file)
+          mountPath: /opt/efm/efm-2.3.1.0-2/conf/efm.properties
+          subPath: efm.properties
+          readOnly: true
+
+      volumes:
+      - name: agent-binaries
+        persistentVolumeClaim:
+          claimName: efm-agent-binaries
+      - name: efm-config               # ← NEW
+        configMap:
+          name: efm-config
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: efm
+  namespace: cld-streaming
+  labels:
+    app: efm
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 10090
+    targetPort: 10090
+    protocol: TCP
+    name: efm-ui
+  - port: 9092
+    targetPort: 9092
+    protocol: TCP
+    name: metrics
+  selector:
+    app: efm
+
+```
+
+Apply YAMLs:
 
 ```bash
 kubectl apply -f efm-configMap.yaml -n cld-streaming
+kubectl apply -f efm-pvc.yaml -n cld-streaming
+kubectl apply -f efm-deployment.yaml -n cld-streaming
 ```
 
-3. **Update your `efm-deployment.yaml`** (add the ConfigMap mount)
+### Verify EFM Properties File path
 
-   Add this under `spec.template.spec.volumes` (next to your `agent-binaries` volume):
+```bash
+EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
+kubectl exec $EFM_POD -n cld-streaming -- find /opt/efm -name efm.properties
+```
 
-   ```yaml
-   volumes:
-   - name: agent-binaries
-     persistentVolumeClaim:
-       claimName: efm-agent-binaries
-   - name: efm-config               # ← NEW
-     configMap:
-       name: efm-config
-   ```
+### Apply Changes When Needed
 
-   Add this under the container’s `volumeMounts` (next to the agent-binaries mount):
+```bash
+kubectl apply -f efm-deployment.yaml -n cld-streaming
+kubectl rollout restart deployment/efm -n cld-streaming
+kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
+```
 
-   ```yaml
-   volumeMounts:
-   - name: agent-binaries
-     mountPath: /opt/efm/agent-deployer/binaries
-   - name: efm-config               # ← NEW (this overrides the file)
-     mountPath: /opt/efm/efm-2.3.1.0-2/conf/efm.properties
-     subPath: efm.properties
-     readOnly: true
-   ```
-   (If the exact path is not `/opt/efm/efm-2.3.1.0-2/conf/efm.properties`, run the command in step 4 first and adjust the `mountPath`.)
+### Verify EFM is using PostgreSQL
 
-4. **Verify the properties file path** (optional but recommended):
-   ```bash
-   EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')
-   kubectl exec $EFM_POD -n cld-streaming -- find /opt/efm -name efm.properties
-   ```
-
-5. **Apply the new deployment**:
-   ```bash
-   kubectl apply -f efm-deployment.yaml -n cld-streaming
-   kubectl rollout restart deployment/efm -n cld-streaming
-   kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
-   ```
-
-6. **Verify it’s now using PostgreSQL**:
-   ```bash
-   kubectl exec $EFM_POD -n cld-streaming -- sh -c '
-     find /opt/efm -name efm.properties -exec grep -E "db\.url|db\.driverClass" {} +'
-   ```
+```bash
+kubectl exec $EFM_POD -n cld-streaming -- sh -c 'find /opt/efm -name efm.properties -exec grep -E "db\.url|db\.driverClass" {} +'
+```
    You should now see the `jdbc:postgresql://...` line.

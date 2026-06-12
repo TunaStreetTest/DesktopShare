@@ -15,120 +15,13 @@ This post directly extends:
 Let’s dive in.
 
 
-### Create the EFM Database & User in Your Existing SSB Postgres
+### Create a Persisted Edge Flow Manager on Kubernetes
 
-First, find the Postgres pod:
-
-```bash
-kubectl get pods -n cld-streaming | grep postgres
-```
-
-Copy the pod name (e.g. `ssb-postgresql-abc123-xyz`).
-
-Now run these one-time psql commands **inside** that pod:
-
-```bash
-kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "CREATE DATABASE efm;"
-kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "CREATE USER efm WITH PASSWORD 'efm_password';"
-kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE efm TO efm;"
-kubectl exec -it <ssb-postgresql-pod-name> -n cld-streaming -- psql -U postgres -c "ALTER DATABASE efm OWNER TO efm;"
-```
-
-### Create the EFM Database Password Secret
-
-```bash
-kubectl create secret generic efm-db-pass \
-  --from-literal=password=efm_password \
-  --namespace cld-streaming
-```
-
-
-### Create a PersistentVolumeClaim for Agent Binaries (so they survive pod restarts)
-
-Create `efm-agent-binaries-pvc.yaml`:
-
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: efm-agent-binaries
-  namespace: cld-streaming
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 2Gi   # plenty for several versions of Java + C++
-  storageClassName: standard   # Minikube default
-```
-
-Apply it:
-
-```bash
-kubectl apply -f efm-agent-binaries-pvc.yaml
-```
-[ i need to work on this, more than once my efm state is blown away,  i even have lost stuff,  not sure if i blew it away or if maybe OOM or too cluster too busy -  after doing a re-roll of EFM my last test, all classes were gone ]
-
-### Pull the Official EFM Docker Image into Minikube
-
-```bash
-eval $(minikube docker-env)
-docker login container.repo.cloudera.com
-docker pull container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
-```
-
-Use the exact tag that matches your CSO / CEM entitlement — 2.2.0.0-86 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
-
-### EFM Deployment YAML
-
-Create these files in your working directory:
-
-`efm-pvc.yaml`
-
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: efm-agent-binaries
-  namespace: cld-streaming
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 2Gi
-  storageClassName: standard
-
-````
-
-`efm-deployment.yaml`
-
-```yaml
-get new yaml and configmap
-```
-
-**Create the encryption secret first** (if you haven’t already):
-
-```bash
-kubectl create secret generic efm-encryption \
-  --from-literal=encryption.password=SuperSecretEFMKey123! \
-  --namespace cld-streaming
-```
-
-Apply it:
-
-```bash
-kubectl apply -f efm-pvc.yaml
-kubectl apply -f efm-deployment.yaml
-```
+[How to Install Persisted EFM on Kubernetes](efm-persistance.md)
 
 ### Download Compatible MiNiFi Java & C++ Binaries (Cloudera archive)
 
-  This section was original short enough to be in-line, but after taking the work stream into a sidequest it became its own doc.  
-
-
   [Installing EFM Binaries for Windows, Linux, and Nividia](efm-binaries.md).
-
 
 ###  Restart EFM
 
@@ -139,6 +32,8 @@ kubectl rollout restart deployment/efm -n cld-streaming
 kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120s
 ```
 
+**Warning** it takes several minutes for EFM to re roll.  Be patient.  Use K9s or pod logs to confirm that EFM finishes startup and discloses its final hosted URLs.
+
 ### Expose EFM for Easy Access
 
 ```bash
@@ -147,20 +42,19 @@ minikube tunnel
 
 [http://127.0.0.1:10090/efm/ui](http://127.0.0.1:10090/efm/ui)
 
-[ I need to update this, we moved to the windows host IP for efm to be accessible to Jetson ]
+[ I need to update this, we moved to the windows host IP for efm to be accessible to Jetson.  However the tunnel method is preferred since the url is consistent. Currently in windows the minikube sevice command the open port is random and you have to visit and append /efm/ui/ on end of the browser url  - better way would be appreciated ]
 
 Open that URL in your browser — you should land on the EFM login screen.
 
 Now create a class and you can get to the Deploy Agent CLI Command Screen to verify all of the binaries are there.
 
-[ screen shot here ]
 
 Go ahead and Grab the Linux agent cli code:
  
 ```bash
 curl -L \
- -d agentClass=test \
- -d agentIdentifier=b2c63cf5-de86-4b62-8d17-cad369af68ad \
+ -d agentClass=KubernetesPod \
+ -d agentIdentifier=e99e45f5-70f5-4847-af76-4f620b764aa9 \
  -d agentType=cpp \
  -d agentVersion=1.26.02 \
  -d autoConfigureSecurity=false \
@@ -173,8 +67,7 @@ curl -L \
  http://192.168.1.121:10090/efm/api/agent-deployer/script | bash -
 ```
 
-
-Now that we have an agent code, we will wrap that up into a docker deployed kubernetes pod.  
+Now that we have an agent curl code, we will wrap that up into a docker deployed kubernetes pod and test it on minikube.  
 
 First pull the docker image we need:
 
@@ -183,8 +76,9 @@ eval $(minikube docker-env)
 docker pull --platform linux/amd64 ubuntu:22.04
 ```
 
-
 Next create `minifi-agent-pod.yaml`
+
+Notice we have changed the `baseUrl` and the `http://` host to `efm.cld-streaming.svc:10090` internal hostname and port for EFM on Kubernetes.
 
 ```yaml
 apiVersion: v1
@@ -202,7 +96,6 @@ spec:
     - |
       apt-get update && apt-get install -y curl tar python3 python3-pip python3-venv
       ln -s /usr/bin/python3 /usr/bin/python || true
-      
       curl -L \
        -d agentClass=KubernetesPod \
        -d agentIdentifier=e99e45f5-70f5-4847-af76-4f620b764aa9 \
@@ -216,8 +109,7 @@ spec:
        -d serviceUser=root \
        -d trustSelfSignedCertificates=false \
        http://efm.cld-streaming.svc:10090/efm/api/agent-deployer/script | bash -
-      
-      tail -f /dev/null                                
+      tail -f /dev/null                      
 ```
 
 Apply the Agent Pod:
@@ -225,21 +117,25 @@ Apply the Agent Pod:
 ```bash
 kubectl apply -f minifi-agent-pod.yaml
 kubectl wait --for=condition=ready pod minifi-agent-test -n cld-streaming --timeout=60s\nkubectl logs minifi-agent-test -n cld-streaming
+```
+
+Be patient and watch the pod log and app logs:
+
+```bash
 kubectl logs minifi-agent-test -n cld-streaming -f
 kubectl exec -it minifi-agent-test -n cld-streaming -- tail -f /nifi-minifi-cpp-1.26.02/logs/minifi-app.log
 ```
 
-Now Minifi should be up in the pod and the agent should appear in the `test` Class in the EFM Dashboard.  Win!
+Within a few minutes Minifi should be running in the pod and the agent should appear in the `KubernetesPod` Class in the EFM Dashboard.  Win!
 
 
 ### 3. Deploy the MiNiFi C++ Agent on the Jetson Orin Nano
-
 
 Generate a **unique** agent identifier test class `NvidiaNano` and fetch the CLI command for arch64:
 
 ```bash
 curl -L \
- -d agentClass=jetson-edge \
+ -d agentClass=NvidiaNano \
  -d agentIdentifier=$(cat /proc/sys/kernel/random/uuid) \
  -d agentType=cpp \
  -d agentVersion=1.26.02 \
@@ -250,10 +146,10 @@ curl -L \
  -d serviceName=minifi \
  -d serviceUser=minifi \
  -d trustSelfSignedCertificates=false \
- http://192.168.1.121:46663/efm/api/agent-deployer/script | bash -
+ http://<YOUR_EFM_HOST_IP/efm/api/agent-deployer/script | bash -
 ```
 
-**Replace** `<YOUR_LAB_HOST_IP>` with your actual lab machine IP.
+**Replace** `<YOUR_EFM_HOST_IP>` with your actual lab machine IP.
 
 The script will:
 - Contact EFM
@@ -271,9 +167,29 @@ ls -l minifi-1.26.02* || echo "Check ~/ or /opt/minifi*"
 tail -f minifi-1.26.02/logs/minifi-app.log
 ```
 
-The agent should appear almost immediately in the EFM UI → **Monitor** → **Agents** (under class `test`).
+The agent should appear almost immediately in the EFM UI → **Monitor** → **Agents** (under class `NvidiaNano`).
 
-[ I got all the binaries working at this point metrics are ready ]
+
+### 5. Import the Agent Flow
+
+The final step is to import and publish flow so we can confirm everything is working.
+I did all the hard work here getting python installed on edge devices and discovering these initial test flows.
+Most important: TensorRT flow which is the one we want, but I also include the first TailLog flow.
+
+#### EFM Agent Flow Files - TensorRT - ListenHttp -> ExecuteScript -> PublishKafka
+
+- [NvidiaNano](files/efm/NvidiaNano-TensorRT.json) - Operational
+- [WindowsDesktop](files/efm/WindowsDesktop-TensorRT.json) - WIP
+- [KubernetesPod](files/efm/KubernetesPod-TensorRT.json) - Operational
+
+#### EFM Agent Flow Files - `minifi-app.log` - TailLog -> PublishKafka
+
+- [NvidiaNano](files/efm/NvidiaNano.json) - Operational
+- [WindowsDesktop](files/efm/WindowsDesktop.json) - Operational
+- [KubernetesPod](files/efm/KubernetesPod.json) - Operational
+
+[ need to add these to MiNiFi Kubernetes Playground]
+
 
 ### Add EFM to Your CSO Prometheus Observability
 
@@ -311,7 +227,11 @@ nifi.c2.metrics.publisher.prometheus.port=9092
 ```
 The agent registers itself with EFM, EFM knows the Prometheus scrape target, or you add a static scrape in your CSO Prometheus config. My Grafana dashboard will now show Jetson CPU/GPU/temp + model inference latency + flow throughput.
 
-### Testing Nvidia Jetson
+
+
+### Appendix 
+
+#### Testing Nvidia Jetson
 
 Flow
 
@@ -320,3 +240,6 @@ Python Script
 Curl Command
 
 Kafka Messages
+
+
+

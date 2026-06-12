@@ -1,6 +1,33 @@
 
 [ see efm-binaries.md for complete binary delivery content ]
 
+
+### Create a PersistentVolumeClaim for Agent Binaries (so they survive pod restarts)
+
+Create `efm-agent-binaries-pvc.yaml`:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efm-agent-binaries
+  namespace: cld-streaming
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi   # plenty for several versions of Java + C++
+  storageClassName: standard   # Minikube default
+```
+
+Apply it:
+
+```bash
+kubectl apply -f efm-agent-binaries-pvc.yaml
+```
+
+
 You need binaries that match EFM 2.3.x compatibility:
 
 - **MiNiFi C++** → 1.26.02 (best for Jetson Docker workflow)
