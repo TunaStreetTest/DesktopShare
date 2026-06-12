@@ -382,3 +382,35 @@ The following environment configuration was determined:                         
 
 ```
 
+```bash
+
+Set-ExecutionPolicy Bypass -Scope Process -Force;
+
+# 1. Download the EFM deployment script into a variable
+$response = Invoke-WebRequest `
+ -Uri http://127.0.0.1:46663/efm/api/agent-deployer/script `
+ -Method Post `
+ -Body ("agentClass=test" + `
+        "&agentIdentifier=a66d299f-e7a3-42ea-84cf-3669009e4596" + `
+        "&agentType=cpp" + `
+        "&agentVersion=1.26.02" + `
+        "&autoConfigureSecurity=false" + `
+        "&baseUrl=http%3A%2F%2F127.0.0.1%3A46663%2Fefm%2Fapi" + `
+        "&hbPeriod=5000" + `
+        "&osArch=windows" + `
+        "&serviceName=minifi" + `
+        "&serviceUser=minifi" + `
+        "&trustSelfSignedCertificates=false") `
+ -UseBasicParsing `
+ -ContentType "application/x-www-form-urlencoded"
+
+$deployScript = $response.Content
+
+# 2. Inject ADDLOCAL=ALL into the silent MSI execution arguments
+# EFM typically structures the MSI silent install argument as `/qn`
+$modifiedScript = $deployScript -replace '/qn', '/qn ADDLOCAL=ALL'
+
+# 3. Execute the newly modified script
+Invoke-Expression $modifiedScript
+
+```
