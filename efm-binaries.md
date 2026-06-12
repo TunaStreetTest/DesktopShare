@@ -1,6 +1,6 @@
 ## How To Install Cloudera Edge Flow Manager Agent Binaries
 
-We need **MiNiFi Java** binaries, **MiNiFi C++ Windows** binaries (`.msi`), **MiNiFi C++ Linux x86_64** binaries, and now **MiNiFi C++ Linux ARM64 (aarch64)** binaries for Edge Flow Manager (EFM). As EFM is a multi-tenant agent manager; it evaluates the incoming agent heartbeats using a strict coordinate layout: `${agentType}/${osArch}/${agentVersion}`.  This markdown is a side quest I took while learning EFM.  I aimed to tackle agents working on mac minikube pod, windows minikube pod, windows desktop native .exe, windows WSL2 ubuntu, and last but not least ubuntu on nvidia jetson.
+We need **MiNiFi Java** binaries, **MiNiFi C++ Windows** binaries (`.msi`), **MiNiFi C++ Linux x86_64** binaries, and now **MiNiFi C++ Linux ARM64 (aarch64)** binaries for Edge Flow Manager (EFM). As EFM is a multi-tenant agent manager; it evaluates the incoming agent heartbeats using a strict coordinate layout: `${agentType}/${osArch}/${agentVersion}`.  This markdown is a side quest I took while installing EFM in a kubernetes ecosystem.  I aimed to tackle agents working on mac minikube pod, windows minikube pod, windows desktop native .exe, windows WSL2 ubuntu, and last but not least ubuntu on nvidia jetson.
 
 **Critical Lessons Applied:**
 
@@ -260,7 +260,7 @@ http://127.0.0.1:41909]
 ❗  Because you are using a Docker driver on linux, the terminal needs to be open to run it.
 ```
 
-**Notice*** With `minikube service` control click the :43431 url (2nd to last), then append `/efm/ui/` to get to the EFM UI.
+**Notice** With `minikube service` control click the :43431 url (2nd to last), then append `/efm/ui/` to get to the EFM UI.
 
 ### PowerShell History
 

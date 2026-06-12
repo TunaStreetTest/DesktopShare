@@ -92,5 +92,3 @@ You can download the pretrained models from NGC and convert them to TensorRT eng
 
 **Bottom line**:  
 Yes — TensorRT is actively used in production license plate readers, and NVIDIA even provides official models + sample code specifically for this task. It’s one of the best options if you’re targeting NVIDIA GPUs or Jetson devices.
-
-Would you like links to the exact sample code, model download instructions, or help choosing between the official NVIDIA pipeline vs. building your own YOLO + TensorRT version?
