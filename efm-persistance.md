@@ -1,6 +1,6 @@
-## How to Install Persisted EFM on Kubernetes
+## How to Install a Persisted Edge Flow Manager on Kubernetes
 
-To avoid loosing data after efm pod rollouts we need to use `ssb-postgres` to persist our EFM metadata.
+To avoid loosing Edge Flow Manager (EFM) data after EFM pod rollouts we need can use `ssb-postgres` to persist our EFM metadata.
 
 
 ### Working with Postges
@@ -36,7 +36,7 @@ docker login container.repo.cloudera.com
 docker pull container.repo.cloudera.com/cloudera/efm:2.3.1.0-2
 ```
 
-Use the exact tag that matches your CSO / CEM entitlement — 2.2.0.0-86 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
+Use the exact tag that matches your CSO / CEM entitlement — 2.3.1.0-2 is the one I’m running in the lab right now. Check your Cloudera archive for the latest matching version.
 
 ### Working with EFM Deployment YAML
 
@@ -199,7 +199,6 @@ spec:
     requests:
       storage: 2Gi
   storageClassName: standard
-
 ````
 
 `efm-deployment-persisted.yaml`
@@ -233,10 +232,6 @@ spec:
         env:
         - name: EF_DB_URL
           value: "jdbc:postgresql://ssb-postgresql.cld-streaming.svc:5432/efm"
-        - name: EF_REGISTRY_URL
-          value: "http://host.minikube.internal:18080"
-        - name: EF_REGISTRY_ENABLED
-          value: "true"
         - name: JAVA_OPTS
           value: "-Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
         - name: EF_JAVA_OPTS
@@ -263,7 +258,7 @@ spec:
         volumeMounts:
         - name: agent-binaries
           mountPath: /opt/efm/efm-2.3.1.0-2/agent-deployer/binaries
-        - name: efm-config               # ← NEW (this overrides the file)
+        - name: efm-config
           mountPath: /opt/efm/efm-2.3.1.0-2/conf/efm.properties
           subPath: efm.properties
           readOnly: true
@@ -272,7 +267,7 @@ spec:
       - name: agent-binaries
         persistentVolumeClaim:
           claimName: efm-agent-binaries
-      - name: efm-config               # ← NEW
+      - name: efm-config
         configMap:
           name: efm-config
 ---
@@ -308,7 +303,7 @@ kubectl apply -f efm-pvc.yaml -n cld-streaming
 kubectl apply -f efm-deployment.yaml -n cld-streaming
 ```
 
-### Verify EFM Properties File path
+### Verify EFM Properties File Path
 
 ```bash
 EFM_POD=$(kubectl get pod -n cld-streaming -l app=efm -o jsonpath='{.items[0].metadata.name}')

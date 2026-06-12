@@ -1,6 +1,6 @@
 ## How To Install Cloudera Edge Flow Manager Agent Binaries
 
-You have **MiNiFi Java** binaries, **MiNiFi C++ Windows** binaries (`.msi`), **MiNiFi C++ Linux x86_64** binaries, and now **MiNiFi C++ Linux ARM64 (aarch64)** binaries for your Jetson device. EFM is a multi-tenant agent manager; it evaluates the incoming agent heartbeats using a strict coordinate layout: `${agentType}/${osArch}/${agentVersion}`.
+We need **MiNiFi Java** binaries, **MiNiFi C++ Windows** binaries (`.msi`), **MiNiFi C++ Linux x86_64** binaries, and now **MiNiFi C++ Linux ARM64 (aarch64)** binaries for Edge Flow Manager (EFM). As EFM is a multi-tenant agent manager; it evaluates the incoming agent heartbeats using a strict coordinate layout: `${agentType}/${osArch}/${agentVersion}`.  This markdown is a side quest I took while learning EFM.  I aimed to tackle agents working on mac minikube pod, windows minikube pod, windows desktop native .exe, windows WSL2 ubuntu, and last but not least ubuntu on nvidia jetson.
 
 **Critical Lessons Applied:**
 
@@ -146,13 +146,11 @@ kubectl wait --for=condition=ready pod -l app=efm -n cld-streaming --timeout=120
 
 ```
 
-
-
 Go open or refresh your browser tab at `http://localhost:10090/efm/ui` (or your proxy interface address). The UI dropdown will now cleanly display **`v1.26.02 - linux`**, **`v1.26.02 - windows`**, and **`v2.24.08.0-19 - linux`**. Clicking them to generate the scripts will successfully pass both UI and Backend validation.
 
 ### Working Edge Flow Manager Deploy Agent CLI Command Samples
 
-java 
+`java` MiNiFi Agent
 
 ```
 curl -L \
@@ -170,7 +168,7 @@ curl -L \
  http://127.0.0.1:46663/efm/api/agent-deployer/script | bash -
 ```
 
-cpp linux
+`cpp linux` MiNiFi Agent
 
 ```
 curl -L \
@@ -188,7 +186,25 @@ curl -L \
  http://127.0.0.1:46663/efm/api/agent-deployer/script | bash -
 ```
 
-cpp windows
+`cpp linuxaarch64` MiNiFi Agent
+
+```
+curl -L \
+ -d agentClass=NvidiaNano \
+ -d agentIdentifier=$(cat /proc/sys/kernel/random/uuid) \
+ -d agentType=cpp \
+ -d agentVersion=1.26.02 \
+ -d autoConfigureSecurity=false \
+ -d baseUrl=http%3A%2F%2F127.0.0.1%3A46663%2Fefm%2Fapi \
+ -d hbPeriod=5000 \
+ -d osArch=linuxaarch64 \
+ -d serviceName=minifi \
+ -d serviceUser=minifi \
+ -d trustSelfSignedCertificates=false \
+ http://127.0.0.1:46663/efm/api/agent-deployer/script | bash -
+```
+
+`cpp windows` MiNiFi Agent
 
 ```bash
 Set-ExecutionPolicy Bypass -Scope Process -Force;`
@@ -211,10 +227,20 @@ Invoke-WebRequest `
  | Invoke-Expression
 ```
 
+## Appendix
 
 
+### Expose EFM 
+
+Port Forward to expose EFM to world, then use minikube `hostip:10090` in agent curls.
+
+```bash
 kubectl port-forward --address 0.0.0.0 service/efm 10090:10090 -n cld-streaming
+```
 
+### Minikube Service for Windows
+
+```bash
 tunas@MINI-Gaming-G1:~$ minikube service efm -n cld-streaming
 ┌───────────────┬──────┬──────────────┬───────────────────────────┐
 │   NAMESPACE   │ NAME │ TARGET PORT  │            URL            │
@@ -232,9 +258,13 @@ tunas@MINI-Gaming-G1:~$ minikube service efm -n cld-streaming
 [cld-streaming efm  http://127.0.0.1:43431
 http://127.0.0.1:41909]
 ❗  Because you are using a Docker driver on linux, the terminal needs to be open to run it.
+```
+
+**Notice*** With `minikube service` control click the :43431 url (2nd to last), then append `/efm/ui/` to get to the EFM UI.
 
 ### PowerShell History
 
+```bash
 PS C:\Users\tunas> history
 
   Id CommandLine
@@ -251,28 +281,9 @@ PS C:\Users\tunas> history
   10 wsl --shutdown
   11 New-NetFirewallRule -DisplayName "Allow ICMPv4-In" -Pro...
   12 New-NetFirewallRule -DisplayName "Allow EFM Port 10090"...
-
-### Deployment CLI Command Sample (Jetson / ARM64)
-
-```bash
-curl -L \
- -d agentClass=jetson-edge \
- -d agentIdentifier=$(cat /proc/sys/kernel/random/uuid) \
- -d agentType=cpp \
- -d agentVersion=1.26.02 \
- -d autoConfigureSecurity=false \
- -d baseUrl=http%3A%2F%2F127.0.0.1%3A46663%2Fefm%2Fapi \
- -d hbPeriod=5000 \
- -d osArch=linuxaarch64 \
- -d serviceName=minifi \
- -d serviceUser=minifi \
- -d trustSelfSignedCertificates=false \
- http://127.0.0.1:46663/efm/api/agent-deployer/script | bash -
-
 ```
 
-
-### Check the pod for extensions
+### Check Pod for Python Extensions
 
 
 ```bash
@@ -293,6 +304,7 @@ kubectl logs minifi-agent-k8s -n cld-streaming -f
 kubectl exec minifi-agent-k8s -n cld-streaming -- ls -al nifi-minifi-cpp-1.26.02/extensions
 ```
 
+```bash
 kubectl exec minifi-agent-k8s -n cld-streaming -- ls -al nifi-minifi-cpp-1.26.02/extensions
 total 86368
 drwxr-xr-x  2 501 staff     4096 Jun  9 12:41 .
@@ -323,8 +335,11 @@ drwxr-xr-x 10 501 staff     4096 Jun  9 12:41 ..
 -rwxr-xr-x  1 501 staff  4859776 Mar  2 23:08 libminifi-standard-processors.so
 -rwxr-xr-x  1 501 staff   245488 Mar  2 23:08 libminifi-systemd.so
 -rwxr-xr-x  1 501 staff   727816 Jun  9 12:34 minifi_native.so
+```
 
+### EFM Startup
 
+```bash
 The following environment configuration was determined:                                                                  │
 │                                                                                                                          │
 │ APP_NAME=efm                                                                                                             │
@@ -345,10 +360,6 @@ The following environment configuration was determined:                         
 │ USE_START_STOP_DAEMON=true                              
 
 
-
-
-
-
 │   ______    ______   __    __ 
 │  /\  ___\  /\  ___\ /\ '-./  \
 │  \ \  __\  \ \  __\ \ \ \-./\ \ 
@@ -358,3 +369,4 @@ The following environment configuration was determined:                         
 │  (v2.3.1.0-2)
 │ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 │ Cloudera | CEM | Edge Flow Manager
+```

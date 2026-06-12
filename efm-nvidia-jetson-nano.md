@@ -82,7 +82,8 @@ docker pull --platform linux/amd64 ubuntu:22.04
 
 Next create `minifi-agent-pod.yaml`
 
-Notice we have changed the `baseUrl` and the `http://` host to `efm.cld-streaming.svc:10090` internal hostname and port for EFM on Kubernetes.
+Notice we have changed the `baseUrl` and the `http://` host to `efm.cld-streaming.svc:10090` internal hostname and port for EFM on kubernetes.
+We ca do this here because this agent is local to the minikube cluster.
 
 ```yaml
 apiVersion: v1
@@ -153,7 +154,7 @@ curl -L \
  -d serviceName=minifi \
  -d serviceUser=minifi \
  -d trustSelfSignedCertificates=false \
- http://<YOUR_EFM_HOST_IP/efm/api/agent-deployer/script | bash -
+ http://<YOUR_EFM_HOST_IP:10090/efm/api/agent-deployer/script | bash -
 ```
 
 **Replace** `<YOUR_EFM_HOST_IP>` with your actual lab machine IP.
@@ -272,8 +273,6 @@ Most important: TensorRT flow which is the one we want, but I also include the f
 - [NvidiaNano](files/efm/NvidiaNano.json) - Operational
 - [WindowsDesktop](files/efm/WindowsDesktop.json) - Operational
 - [KubernetesPod](files/efm/KubernetesPod.json) - Operational
-
-[ need to add these to MiNiFi Kubernetes Playground ]
 
  
 ### 7. Testing Nvidia Jetson Flow
