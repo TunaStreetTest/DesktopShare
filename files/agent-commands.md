@@ -20,4 +20,14 @@ Next the following sample commands I am using to get my Telegram chat started:
 ## a git commit if chat made any repo changes
 /bash git add . && git commit -m "your commit message" && git push
 
+
+/bash cd DesktopShare && git add . && git commit -m "Tuna Street Push Zellij 2" && git push
+
+
+/bash cd ClouderaStreamingOperators && git status
+/bash cd ClouderaStreamingOperators && mv efm-deployment.yaml efm-deployment-persisted.yaml
+/bash cd ClouderaStreamingOperators && git restore efm-deployment.yaml
+/bash cd ClouderaStreamingOperators && git add efm-deployment-persisted.yaml
+/bash cd ClouderaStreamingOperators && git commit -m "EFM Persisted Yaml" && git push
+
 ```
