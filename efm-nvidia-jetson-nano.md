@@ -7,10 +7,10 @@ Today we’re going deep: with local lab for **Cloudera Edge Flow Manager (EFM /
 The goal? Design ai enabled nifi flows + ML model assets once in EFM, push them to edge agents.  We will execute custom models *inside* MiNiFi on the Jetson, and ship system + processor + model metrics straight to the Prometheus instance living inside the CSO stack. All of it documented exactly the way I like — repeatable, with every command, and all the gotchas spelled out.
 
 This post directly extends:
-- My full **Cloudera Streaming Operators on Minikube** guide on the Cloudera Community (and the companion repo).
-- My **Observability with Cloudera Streaming Operators** blog (Prometheus + Grafana for NiFi, Kafka, Flink).
-- My **[MiNiFi Kubernetes Playfround](https://github.com/cldr-steven-matison/MiNiFi-Kubernetes-Playground)** for testing MiNiFi
-- Official Cloudera CEM/EFM and MiNiFi C++ docs (with my WSL2/Windows/Jeston tweaks).
+- My full **[Cloudera Streaming Operators on Minikube](https://stevenmatison.com/blog/Cloudera-Streaming-Operators/)** guide on the Cloudera Community (and the companion repo).
+- My **[Observability with Cloudera Streaming Operators](https://stevenmatison.com/blog/Observability-with-Cloudera-Streaming-Operators/)** blog (Prometheus + Grafana for NiFi, Kafka, Flink).
+- My **[MiNiFi Kubernetes PlayGround](https://github.com/cldr-steven-matison/MiNiFi-Kubernetes-Playground)** for testing MiNiFi
+- Official Cloudera CEM/EFM and MiNiFi C++ docs (with my WSL2/Windows/Jetson tweaks).
 
 Let’s dive in.
 
@@ -19,7 +19,7 @@ Let’s dive in.
 
 [How to Install Persisted EFM on Kubernetes](efm-persistance.md)
 
-### Download Compatible MiNiFi Java & C++ Binaries (Cloudera archive)
+### Add Compatible MiNiFi Java & C++ Binaries from Cloudera Archive
 
   [Installing EFM Binaries for Windows, Linux, and Nividia](efm-binaries.md).
 
@@ -49,7 +49,7 @@ Open that URL in your browser — you should land on the EFM login screen.
 Now create a class and you can get to the Deploy Agent CLI Command Screen to verify all of the binaries are there.
 
 
-Go ahead and Grab the Linux agent cli code:
+Go ahead and grab the Linux agent cli code:
  
 ```bash
 curl -L \
@@ -160,17 +160,93 @@ The script will:
 ### 4. Verify the Agent Is Running
 
 ```bash
-# Find the install location (usually created in current directory or /opt)
-ls -l minifi-1.26.02* || echo "Check ~/ or /opt/minifi*"
-
-# Tail the log
 tail -f minifi-1.26.02/logs/minifi-app.log
 ```
 
-The agent should appear almost immediately in the EFM UI → **Monitor** → **Agents** (under class `NvidiaNano`).
+The agent should appear almost immediately in the EFM UI → **Monitor** → **Agents** under class `NvidiaNano`.
+
+### 5. Deliver Resources to the Agent
+
+Agent Resources are manageable from within EFM.  Upload your files to EFM, then assign them as necessary to Agents in their own Resources tab, and they will appear in /nifi-/assets/ directory.  
+
+**Warning** I did have to chmod +x my agent files on the Jetson.  I will work on this later but for now its an ok manual step before testing curl on the jetson.
+
+#### Execute Script `gpu_nifi_tensorRT-3.py`
+
+cat `files/gpu_nifi_tensorRT-3.py`
+
+```bash
+import tensorrt as trt
+import json
+
+# Callback class for reading the session stream
+class ReadContentCallback:
+    def __init__(self):
+        self.content = ""
+    def process(self, input_stream):
+        self.content = input_stream.read().decode('utf-8')
+        return len(self.content) # Good practice to return bytes read
+
+# Callback class for writing the session stream
+class WriteContentCallback:
+    def __init__(self, data):
+        self.data = data
+    def process(self, output_stream):
+        encoded_data = self.data.encode('utf-8')
+        output_stream.write(encoded_data)
+        return len(encoded_data)  # <--- CRITICAL: MiNiFi C++ needs this integer return!
 
 
-### 5. Import the Agent Flow
+# This is the exact entrypoint MiNiFi C++ calls on every loop execution
+def onTrigger(context, session):
+    
+    flow_file = session.get()
+    
+    if flow_file:
+        try:
+            # 1. Read upstream payload
+            reader = ReadContentCallback()
+            session.read(flow_file, reader)
+            
+            if reader.content.strip():
+                payload = json.loads(reader.content)
+            else:
+                payload = {}
+                
+            # 2. Extract TensorRT Properties
+            logger = trt.Logger(trt.Logger.INFO)
+            tensorrt_info = {
+                "version": str(trt.__version__),
+                "status": "Active"
+            }
+            
+            # 3. Append to JSON structure cleanly
+            if isinstance(payload, dict):
+                payload['tensorrt'] = tensorrt_info
+            elif isinstance(payload, list):
+                for item in payload:
+                    if isinstance(item, dict):
+                        item['tensorrt'] = tensorrt_info
+            
+            updated_json = json.dumps(payload)
+            
+            # 4. Write back to the flow file and update attributes
+            # In MiNiFi C++, session.write modifies the flow_file in place or handles it internally.
+            session.write(flow_file, WriteContentCallback(updated_json))
+            
+            session.putAttribute(flow_file, "python.tensorrt.execution", "Success")
+            
+            # 5. Route to success relationship
+            session.transfer(flow_file, REL_SUCCESS)
+            
+        except Exception as e:
+            # If it breaks, append the error message to an attribute and fail it
+            session.putAttribute(flow_file, "python.error", str(e))
+            session.transfer(flow_file, REL_FAILURE)
+
+```
+
+### 6. Import the Agent Flow
 
 The final step is to import and publish flow so we can confirm everything is working.
 I did all the hard work here getting python installed on edge devices and discovering these initial test flows.
@@ -227,7 +303,7 @@ nifi.c2.metrics.publisher.prometheus.port=9092
 ```
 The agent registers itself with EFM, EFM knows the Prometheus scrape target, or you add a static scrape in your CSO Prometheus config. My Grafana dashboard will now show Jetson CPU/GPU/temp + model inference latency + flow throughput.
 
-
+### Resources
 
 ### Appendix 
 
