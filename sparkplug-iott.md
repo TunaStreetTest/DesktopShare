@@ -1,9 +1,9 @@
 ### Overall Architecture
 - **Mosquitto MQTT Broker** → deployed in Minikube (central message bus).
 - **NVIDIA Jetson** → Edge host running your IoT simulator (publishes simulated Sparkplug B messages).
-- **NVIDIA Jetson** → Edge host running Environment Sensor with Inference Model to capture Extreme Sensor Values -> sound a local alarm on exceptions.
-- **EFM (Edge Flow Manager) / MiNiFi ** → MiNiFi flow(s) that consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` and `ExecuteScript` for Edge Inference Model.
-- **CFM (Cloudera Flow Management) / NiFi ** → Runs the NiFi flow(s) that consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` components and converts to JSON using `ConvertRecord`.
+- **NVIDIA Jetson** → Edge host streaming Environment Sensor data to Inference Model to capture Extreme Sensor Values → sound a local alarm on exceptions.
+- **EFM (Edge Flow Manager) / MiNiFi** → MiNiFi flow consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` and uses `ExecuteScript` for Edge Inference Model.
+- **CFM (Cloudera Flow Management) / NiFi** → Runs a NiFi flow that consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` components and converts to JSON using `ConvertRecord`.
 
 ---
 
@@ -17,7 +17,7 @@
    kubectl create namespace mqtt
    ```
 
-2. Create a **ConfigMap** for `mosquitto.conf` (basic config for testing):
+2. Create a **ConfigMap** for `mosquitto.conf`:
    ```yaml
    apiVersion: v1
    kind: ConfigMap
@@ -89,14 +89,13 @@
 
    **Note the NodePort** (e.g., `30000+` range). From outside the cluster you can connect to `minikube ip:NodePort`.
 
-
 ---
 
 ### Phase 2: NVIDIA Jetson as Edge Host + Sparkplug B Simulator
 
 **Goal**: Simulate realistic Sparkplug B publishing from the edge.
 
-**Recommended library**: **PySparkplug** (clean, modern Python implementation)
+**Recommended library**: **PySparkplug**
 
 ```bash
 pip install pysparkplug paho-mqtt
@@ -343,7 +342,7 @@ Jetson (Edge)
 
 This gives you **both**:
 - Local real-time reaction (buzzer)
-- Centralized processing and storage in NiFi
+- Centralized processing and downstream delivery of messages to NiFi
 
 ---
 
@@ -362,7 +361,17 @@ ExecuteScript (Python)
     │   └── Route based on result
     │
     ▼
-( Optional: Publish back to Mosquitto with new "Alert" metric )
+RouteOnAttribute
+    ├── Read sensor metrics
+    │   ├── Run TensorRT inference (or simple rules)
+    │   ├── If temperature is extreme → Trigger GPIO buzzer
+    │   └── Route based on result
+    │   │
+    │   ▼
+    │   Sound Alarm → Trigger GPIO buzzer
+    ▼
+PublishKafka
+
 ```
 
 **Key Processors needed on MiNiFi:**
