@@ -452,11 +452,33 @@ if __name__ == "__main__":
     main()
 ```
 
-**Later Upgrade Path (TensorRT):**
-- Train a small anomaly detection model (autoencoder or classifier)
-- Export to ONNX → Convert to TensorRT engine
-- Load the `.engine` file in the script using `tensorrt` + `pycuda`
-- Run inference on sensor features for more intelligent "extremity" detection
+### Phase 5.5 – AI at the Edge: Tiny Neural Network + ONNX Runtime + TensorRT
+
+**Goal**  
+Run real GPU-accelerated AI inference directly on the Jetson using the sensor data, while keeping the model small and practical for edge deployment.
+
+**Approach**  
+Instead of large vision models, we train a **very small neural network** (Autoencoder for anomaly detection) on tabular sensor data. We then optimize and run it using **TensorRT** on the Jetson GPU via **ONNX Runtime**.
+
+**High-Level Workflow**
+
+1. **Train** a tiny Autoencoder (or simple classifier) on a PC/laptop using PyTorch (training takes only a few minutes).
+2. **Export** the model to ONNX format.
+3. **Convert** the ONNX model to a TensorRT engine on the Jetson (one-time step using `trtexec` with FP16).
+4. **Run inference** on the Jetson using **ONNX Runtime with TensorRT Execution Provider** (automatically uses the GPU).
+5. Integrate the inference into MiNiFi’s **`ExecuteScript`** processor.
+6. Trigger the buzzer and/or generate alerts when the model detects an anomaly/extreme condition.
+
+**Key Benefits for the Demo**
+- Actually uses the **Jetson GPU** for AI inference (proper TensorRT acceleration).
+- Very lightweight and fast (suitable for real-time edge processing).
+- Clean integration with Sparkplug B via `ConsumeMQTTIIoT`.
+- More intelligent than simple rules (learns normal sensor behavior).
+- Easy to extend later with more features or a classifier.
+
+**Integration Points**
+- MiNiFi flow on Jetson: `ConsumeMQTTIIoT` → `ExecuteScript` (Python + ONNX Runtime + TensorRT) → GPIO control (buzzer) + optional alert publishing.
+- Still forwards data to central Mosquitto → NiFi cluster for full processing.
 
 ---
 
