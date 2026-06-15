@@ -345,49 +345,7 @@ This gives you **both**:
 
 ---
 
-### 5.2 Hardware Recommendation – Buzzer / Alarm (Wow Factor)
-
-**Recommended part:**  
-**Active Buzzer Module** (5V) + small transistor driver
-
-**Why this one?**
-- Very cheap and loud enough for a demo
-- Easy to drive from Jetson GPIO
-- Active buzzer = no need for PWM (simpler code)
-
-**Suggested shopping link (example):**
-- Search for: **"Active Buzzer Module 5V"** or **"KY-006 Buzzer Module"** on Amazon/AliExpress
-
-**Wiring (Safe version with transistor):**
-
-| Jetson Pin     | Component              | Notes |
-|----------------|------------------------|-------|
-| GPIO Pin (e.g. Pin 7) | Base of NPN Transistor (2N2222 or S8050) | Use 1kΩ resistor |
-| Collector      | Buzzer negative (-)    | - |
-| Emitter        | GND                    | - |
-| Buzzer positive (+) | 5V pin on Jetson     | - |
-
-**Alternative (even simpler):** Use a **Relay Module** + buzzer/siren if you want louder sound.
-
-You’ll control it using the official **`Jetson.GPIO`** library.
-
----
-
-### 5.3 Install MiNiFi on Jetson
-
-MiNiFi (especially the **C++ agent**) runs well on Jetson. There are existing examples of people running it on Jetson Nano.
-
-**Basic installation steps:**
-1. Download the latest MiNiFi C++ or Java agent.
-2. Install Java (if using Java version).
-3. Configure `minifi.properties` and `config.yml`.
-4. Create a flow that includes `ConsumeMQTTIIoT`.
-
-> **Note**: `ConsumeMQTTIIoT` is a newer Cloudera processor. Make sure you’re using a recent MiNiFi build that includes the Sparkplug components (or use standard `ConsumeMQTT` + `MQTTIIoTReader` if the full processor isn’t available yet).
-
----
-
-### 5.4 MiNiFi Flow Design on Jetson
+### 5.2 MiNiFi Flow Design on Jetson
 
 **Flow structure on MiNiFi:**
 
@@ -409,11 +367,11 @@ ExecuteScript (Python)
 - `ConsumeMQTTIIoT` (or `ConsumeMQTT` + `MQTTIIoTReader`)
 - `ExecuteScript` (Python)
 - `RouteOnAttribute`
-- `UpdateAttribute` (optional)
+- `PublishKafka`
 
 ---
 
-### 5.5 Custom ExecuteScript Example (Python + GPIO + Threshold)
+### 5.3 Custom ExecuteScript Example (Python + GPIO + Threshold)
 
 Here’s a starter script you can use inside `ExecuteScript`:
 
