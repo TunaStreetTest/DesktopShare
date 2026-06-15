@@ -1,7 +1,8 @@
 ### Overall Architecture
 - **Mosquitto MQTT Broker** → deployed in Minikube (central message bus).
 - **NVIDIA Jetson** → Edge host running your IoT simulator (publishes Sparkplug B messages).
-- **CFM (Cloudera Flow Management)** → Runs the NiFi flow that consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` components and converts to JSON using `ConvertRecord`.
+- **NVIDIA Jetson** → Edge host running inference Model to capture Extreme Sensor Values -> sound a local alarm on exceptions.
+- **CFM (Cloudera Flow Management) / EFM MiNiFi ** → Runs the NiFi/MiniFi flow(s) that consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` components and converts to JSON using `ConvertRecord`.
 
 ---
 
