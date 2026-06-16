@@ -1,0 +1,40 @@
+layout {
+    split_direction "Horizontal"
+
+    pane {
+        command "/opt/homebrew/bin/minikube"
+        args "mount" "/Users/steven.matison/Documents/GitHub/NiFi2 Processor Playground/nifi-custom-processors/:/extensions" "--uid" "10001" "--gid" "10001"
+    }
+
+    pane {
+        command "bash"
+        args "-lc" "sudo /opt/homebrew/bin/minikube tunnel"
+    }
+
+    pane {
+        command "/opt/homebrew/bin/minikube"
+        args "service" "efm" "-n" "cld-streaming"
+    }
+
+    pane {
+        command "/opt/homebrew/bin/minikube"
+        args "service" "cloudera-surveyor-service" "--namespace" "cld-streaming"
+    }
+
+    pane {
+        command "/opt/homebrew/bin/minikube"
+        args "service" "prometheus-grafana" "--namespace" "cld-streaming"
+    }
+
+    pane {
+        command "/usr/local/bin/kubectl"
+        args "port-forward" "--address" "0.0.0.0" "service/my-cluster-kafka-bootstrap" "9092:9092" "-n" "cld-streaming"
+    }
+
+    pane {
+        command "/usr/local/bin/kubectl"
+        args "port-forward" "--address" "0.0.0.0" "service/efm" "10090:10090" "-n" "cld-streaming"
+    }
+
+
+}
