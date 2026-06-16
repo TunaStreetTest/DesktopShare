@@ -240,7 +240,7 @@ Process groups (shipped as one JSON in `flows/CSOOperatorApp.json`):
 | `StreamToWhisper` | Transcribe | `ConsumeKafka_2_6 new_audio` | `InvokeHTTP whisper-service:8001/transcribe` → `EvaluateJsonPath $.text` → `ReplaceText` → `PublishKafka_2_6 new_documents` |
 | `StreamTovLLM` | RAG indexer | `ConsumeKafka_2_6 new_documents` | `SplitText` (20-line) → `ExtractText` → `ReplaceText` (embed JSON) → `InvokeHTTP embed` → `EvaluateJsonPath` → `ReplaceText` (Qdrant upsert) → `InvokeHTTP qdrant upsert` |
 
-A `ListenHTTP` processor is added at the head of `IngestDocsToStream` and `IngestDataToStream` so the backend can `POST` files directly. The original `GenerateFlowFile`+`InvokeHTTP` pair stays in place to support a "demo without uploading" path that pulls from a sample URL.
+A `ListenHTTP` processor is added at the head of `IngestDocsToStream` and `IngestDataToStream` so the backend can `POST` files directly. The original `GenerateFlowFile`+`InvokeHTTP` pair stays in place to support a "demo without uploading" path that pulls from a sample URL. Until the ListenHTTP entry point is wired, the backend falls back to publishing the upload directly to `new_documents` / `new_audio` via `aiokafka` — the consumer flows still pick it up.
 
 When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend is unaffected since it speaks NiFi REST.
 
