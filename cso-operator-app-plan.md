@@ -218,14 +218,20 @@ Topics the app reads / writes:
 | `new_audio` | NiFi `IngestDataToStream` | NiFi `StreamToWhisper` | raw audio bytes |
 | `new_documents` | NiFi `IngestDocsToStream` *and* `StreamToWhisper` | NiFi `StreamTovLLM` | text |
 
-Bootstrap: `my-cluster-kafka-bootstrap.cld-streaming.svc:9092`. App uses `aiokafka` for topic stats + tail.
+In-cluster bootstrap: `my-cluster-kafka-bootstrap.cld-streaming.svc:9092`. App uses `aiokafka` for topic stats, tail, and producing into `new_*` topics on ingest.
+
+For host-side dev (Mac/Windows), the Kafka CR has an additional `external` listener (`type: loadbalancer`, `port: 9094`, plaintext) with per-broker `advertisedHost: localhost` and unique `advertisedPort: 19094-19096`. Four port-forwards map bootstrap (`localhost:19090`) and brokers 0/1/2 (`localhost:19094`/`19095`/`19096`) to the LB services. `scripts/kafka-external-listener.sh` patches the Kafka CR idempotently; `scripts/mac-dev.sh` starts the port-forwards.
 
 There is no separate transcript topic — Whisper republishes into `new_documents` so the existing RAG flow handles transcripts unchanged.
 
 ### NiFi (CFM, namespace `cfm-streaming`)
 
 UI (in-cluster): `https://mynifi-web.mynifi.cfm-streaming.svc.cluster.local/nifi/`
-REST: same host. Process groups (each shipped as JSON in `flows/`):
+REST: same host. Auth: Bearer token via `POST /nifi-api/access/token`. Admin credentials are in `Secret/nifi-admin-creds` (keys `username`, `password`) in `cfm-streaming`. Backend caches the token and refreshes on 401. The shared httpx client must keep cookies cleared on NiFi calls — when both the Bearer and a session cookie (`INGRESSCOOKIE` / `__Secure-Request-Token`) are present on a write, NiFi falls into cookie-auth mode and rejects with 403/CSRF.
+
+All four flows are imported under a single parent process group (`CSOOperatorApp`) for one-click drag-and-drop. The resolver BFS-walks PGs from root to find the four by name.
+
+Process groups (shipped as one JSON in `flows/CSOOperatorApp.json`):
 
 | Flow | Role | Inputs | Outputs |
 |---|---|---|---|
@@ -276,7 +282,8 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 | `POST /api/nifi/{name}/start\|stop` | Toggle by name (resolved to UUID + revision at startup) |
 | `GET  /api/qdrant/stats` | Point count, segments |
 | `POST /api/qdrant/recreate` | Drop + recreate `my-rag-collection` (768-d Cosine) |
-| `GET  /api/kafka/topics` | Depth/lag for `new_audio`, `new_documents` |
+| `GET  /api/kafka/topics` | Depth for the watched topics (`new_audio`, `new_documents`) |
+| `GET  /api/kafka/all-topics` | Depth + partitions for every non-internal topic |
 | `GET  /api/kafka/tail/{topic}` | SSE tail of recent messages |
 | `GET  /api/health` | Pings every backing service |
 
@@ -294,6 +301,7 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 - **Ingest** — dropzone with format detection (audio → IngestDataToStream, doc → IngestDocsToStream).
 - **NiFi Controls** — four cards: `IngestDocsToStream`, `IngestDataToStream`, `StreamToWhisper`, `StreamTovLLM`. Start/stop, live state badge.
 - **Kafka Activity** — live tail of `new_audio` (binary preview/length) and `new_documents` (text). Depth/lag indicators per topic.
+- **All Topics** (bottom of page) — live grid of every non-internal topic with partition count and depth, with `new_audio`/`new_documents` highlighted.
 - **RAG Query** — chat UI with vLLM streaming, expandable source chunks (Qdrant payloads), prompt history.
 - **Health bar** — green/red dots per backing service, click for details.
 
@@ -411,5 +419,7 @@ cd frontend && npm run dev
 ## Prerequisites
 
 - `hf-token` Secret in `default` namespace (used by vLLM and the Whisper image build).
+- `nifi-admin-creds` Secret in `cfm-streaming` namespace (admin/password for the NiFi REST API). Backend reads the password into `NIFI_PASSWORD` for dev; in-cluster the values come from a Secret-backed env var.
 - CFM, CSM, CSA operators installed in their respective namespaces.
 - Minikube running with GPU passthrough on the host.
+- For host-side dev: `scripts/kafka-external-listener.sh` applied to the Strimzi Kafka CR.
