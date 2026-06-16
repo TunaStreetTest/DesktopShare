@@ -7,7 +7,7 @@ Supersedes `rag-app-plan.md` (RAG-only scope). Local demo only — no auth, no p
 ## Source posts (canonical)
 
 - **RAG with Cloudera Streaming Operators** — `cldr-steven-matison.github.io/_posts/2026-03-22-RAG with Cloudera Streaming Operators.md`
-  - vLLM (Qwen2.5-3B-Instruct), Qdrant (`my-rag-collection`, 768-d Cosine), TEI embedding (nomic-embed-text-v1), NiFi flows `IngestDocsToStream` + `StreamTovLLM`, Kafka topic `new_documents`.
+  - vLLM (Qwen2.5-3B-Instruct), Qdrant (`my-rag-collection`, 768-d Cosine), TEI embedding (nomic-embed-text-v1), NiFi flows `IngestDataToStream` (doc path) + `StreamTovLLM`, Kafka topic `new_documents`.
 - **Insanely Fast Audio Transcription with Cloudera Streaming Operators** — `cldr-steven-matison.github.io/_posts/2026-03-30-Audio Transcription with Cloudera Streaming Operators.md`
   - Whisper-large-v3 + Flash Attention 2 wrapped in FastAPI on `:8001`, NiFi flows `IngestDataToStream` (audio in) + `StreamToWhisper` (transcribe), Kafka topic `new_audio`. Transcripts are republished into `new_documents` so the existing RAG pipeline picks them up unchanged.
 
@@ -215,8 +215,8 @@ Topics the app reads / writes:
 
 | Topic | Producer | Consumer | Payload |
 |---|---|---|---|
-| `new_audio` | NiFi `IngestDataToStream` | NiFi `StreamToWhisper` | raw audio bytes |
-| `new_documents` | NiFi `IngestDocsToStream` *and* `StreamToWhisper` | NiFi `StreamTovLLM` | text |
+| `new_audio` | NiFi `IngestDataToStream` (audio path) | NiFi `StreamToWhisper` | raw audio bytes |
+| `new_documents` | NiFi `IngestDataToStream` (doc path) *and* `StreamToWhisper` | NiFi `StreamTovLLM` | text |
 
 In-cluster bootstrap: `my-cluster-kafka-bootstrap.cld-streaming.svc:9092`. App uses `aiokafka` for topic stats, tail, and producing into `new_*` topics on ingest.
 
@@ -235,12 +235,11 @@ Process groups (shipped as one JSON in `flows/CSOOperatorApp.json`):
 
 | Flow | Role | Inputs | Outputs |
 |---|---|---|---|
-| `IngestDocsToStream` | Doc ingest | `ListenHTTP` (added) **or** `GenerateFlowFile`+`InvokeHTTP` | `new_documents` |
-| `IngestDataToStream` | Audio ingest | `ListenHTTP` (added) **or** `GenerateFlowFile`+`InvokeHTTP` | `new_audio` |
+| `IngestDataToStream` | Unified ingest (docs + audio) | `ListenHTTP` (added) **or** `GenerateFlowFile`+`InvokeHTTP` | `new_documents` (docs) / `new_audio` (audio) |
 | `StreamToWhisper` | Transcribe | `ConsumeKafka_2_6 new_audio` | `InvokeHTTP whisper-service:8001/transcribe` → `EvaluateJsonPath $.text` → `ReplaceText` → `PublishKafka_2_6 new_documents` |
 | `StreamTovLLM` | RAG indexer | `ConsumeKafka_2_6 new_documents` | `SplitText` (20-line) → `ExtractText` → `ReplaceText` (embed JSON) → `InvokeHTTP embed` → `EvaluateJsonPath` → `ReplaceText` (Qdrant upsert) → `InvokeHTTP qdrant upsert` |
 
-A `ListenHTTP` processor is added at the head of `IngestDocsToStream` and `IngestDataToStream` so the backend can `POST` files directly. The original `GenerateFlowFile`+`InvokeHTTP` pair stays in place to support a "demo without uploading" path that pulls from a sample URL. Until the ListenHTTP entry point is wired, the backend falls back to publishing the upload directly to `new_documents` / `new_audio` via `aiokafka` — the consumer flows still pick it up.
+A `ListenHTTP` processor is added at the head of `IngestDataToStream` so the backend can `POST` files directly. The original `GenerateFlowFile`+`InvokeHTTP` pair stays in place to support a "demo without uploading" path that pulls from a sample URL. Until the ListenHTTP entry point is wired, the backend falls back to publishing the upload directly to `new_documents` / `new_audio` via `aiokafka` — the consumer flows still pick it up.
 
 When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend is unaffected since it speaks NiFi REST.
 
@@ -276,7 +275,7 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 | Endpoint | Action |
 |---|---|
 | `POST /api/query` | Embed → Qdrant top-k → build prompt → vLLM (SSE; pass through native vLLM stream chunks) |
-| `POST /api/ingest/doc` | Multipart upload → `POST` to `IngestDocsToStream` ListenHTTP |
+| `POST /api/ingest/doc` | Multipart upload → `POST` to `IngestDataToStream` ListenHTTP (doc path) |
 | `POST /api/ingest/audio` | Multipart upload → `POST` to `IngestDataToStream` ListenHTTP |
 | `GET  /api/nifi/state` | State of the 4 process groups |
 | `POST /api/nifi/{name}/start\|stop` | Toggle by name (resolved to UUID + revision at startup) |
@@ -294,12 +293,12 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 ## Frontend panels
 
 - **Demo Mode** — guided 4-step walkthrough:
-  1. Start the four flows
+  1. Start the three flows
   2. Drop a doc *or* audio file (or click "use sample" → blog test WAV `OSR_us_000_0010_8k.wav`)
   3. Watch the relevant Kafka topic light up
   4. Ask a pre-baked question (`What is StreamToVLLM?` for docs, `How is rice prepared?` for the sample audio) and stream the answer
-- **Ingest** — dropzone with format detection (audio → IngestDataToStream, doc → IngestDocsToStream).
-- **NiFi Controls** — four cards: `IngestDocsToStream`, `IngestDataToStream`, `StreamToWhisper`, `StreamTovLLM`. Start/stop, live state badge.
+- **Ingest** — dropzone with format detection. Both paths feed `IngestDataToStream` (audio → `new_audio`, doc → `new_documents`).
+- **NiFi Controls** — three cards: `IngestDataToStream`, `StreamToWhisper`, `StreamTovLLM`. Start/stop with optimistic STARTING…/STOPPING… badge, live state polled every 4s.
 - **Kafka Activity** — live tail of `new_audio` (binary preview/length) and `new_documents` (text). Depth/lag indicators per topic.
 - **All Topics** (bottom of page) — live grid of every non-internal topic with partition count and depth, with `new_audio`/`new_documents` highlighted.
 - **RAG Query** — chat UI with vLLM streaming, expandable source chunks (Qdrant payloads), prompt history.
@@ -326,7 +325,6 @@ cso-operator-app/
 │   ├── Dockerfile.whisper        # full Dockerfile from audio post
 │   └── whisper-server.yaml
 ├── flows/                        # exported NiFi process groups w/ ListenHTTP added
-│   ├── IngestDocsToStream.json
 │   ├── IngestDataToStream.json
 │   ├── StreamToWhisper.json
 │   └── StreamTovLLM.json
@@ -405,7 +403,7 @@ cd frontend && npm run dev
 4. **NiFi controls** — name→UUID resolution, start/stop, state.
 5. **Qdrant management** — recreate, stats.
 6. **Kafka activity** — topics endpoint, then SSE tail with `aiokafka`.
-7. **Ingest** — add ListenHTTP to `IngestDocsToStream` and `IngestDataToStream` flow JSON, then frontend dropzone.
+7. **Ingest** — add ListenHTTP to `IngestDataToStream` flow JSON, then frontend dropzone.
 8. **Frontend polish** — Demo Mode walkthrough, health bar, toasts, source-chunk reveal in chat.
 9. **Containerize** + deploy on Mac Minikube.
 10. **Test on Windows** Minikube — adjust ConfigMap if any service names differ; rebuild whisper image with `eval $(minikube docker-env)`.
