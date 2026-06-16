@@ -17,7 +17,7 @@
    kubectl create namespace mqtt
    ```
 
-2. Create a **ConfigMap** for `mosquitto.conf`:
+2. Create a **ConfigMap** for `mosquitto-configMap.yaml`:
    ```yaml
    apiVersion: v1
    kind: ConfigMap
@@ -33,7 +33,7 @@
        log_dest stdout
    ```
 
-3. Deploy Mosquitto (Deployment + Service):
+3. Deploy Mosquitto (Deployment + Service) `mosquitto.yaml`:
    ```yaml
    apiVersion: apps/v1
    kind: Deployment
@@ -83,11 +83,16 @@
 
 4. Apply and verify:
    ```bash
+   kubectl apply -f mosquitto-configMap.yaml
    kubectl apply -f mosquitto.yaml
    kubectl get svc -n mqtt
    ```
 
    **Note the NodePort** (e.g., `30000+` range). From outside the cluster you can connect to `minikube ip:NodePort`.
+
+```bash
+kubectl port-forward pod/mosquitto-b7876bbf7-h8c67 1883:1883 -n mqtt
+```
 
 ---
 
@@ -461,3 +466,168 @@ Instead of large vision models, we train a **very small neural network** (Autoen
 | **Cloud/Cluster**  | Central NiFi (CFM)           | Full processing, storage, dashboards |
 
 ---
+
+
+### Appendix
+
+#### Session 1
+
+In this session I wanted to quickly test mqtt works on minikube, deploy a test script and confirm a flow works with `ConsumeMqTT`, then deploy a Sparkplug B python and test `ConsumeMQTTIIoT`.
+
+Sample Flow:  [SparkPlug](files/SparkPlug.json)
+
+cat `mqtt_test_publisher.py`
+
+```bash
+import time
+import json
+import random
+import paho.mqtt.client as mqtt
+
+# Configuration
+# Use "localhost" if you port-forwarded to your Mac. 
+# Use the K8s service DNS string if running this script inside the cluster.
+BROKER = "localhost" 
+PORT = 1883
+TOPIC = "test/sensor/data"
+
+# Initialize client (compatible with paho-mqtt 2.x)
+client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+
+print(f"Connecting to Mosquitto broker at {BROKER}:{PORT}...")
+try:
+    client.connect(BROKER, PORT, 60)
+except Exception as e:
+    print(f"Connection failed: {e}. Did you forget to run kubectl port-forward?")
+    exit(1)
+
+client.loop_start()
+
+print(f"Successfully connected! Publishing data to topic '{TOPIC}' every 2 seconds. Press Ctrl+C to stop.")
+
+try:
+    while True:
+        # Simulate simple sensor data
+        payload = {
+            "device_id": "MacMockSensor-01",
+            "temperature": round(random.uniform(20.0, 30.0), 2),
+            "humidity": round(random.uniform(40.0, 60.0), 2),
+            "timestamp": int(time.time())
+        }
+
+        # Publish data
+        client.publish(TOPIC, json.dumps(payload))
+        print(f"Published: {payload}")
+        time.sleep(2)
+
+except KeyboardInterrupt:
+    print("\nStopping publisher...")
+    client.loop_stop()
+    client.disconnect()
+
+```
+
+Sample Output:
+
+```bash
+Connecting to Mosquitto broker at localhost:1883...
+Successfully connected! Publishing data to topic 'test/sensor/data' every 2 seconds. Press Ctrl+C to stop.
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 22.43, 'humidity': 53.29, 'timestamp': 1781614422}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 24.88, 'humidity': 51.33, 'timestamp': 1781614424}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 21.82, 'humidity': 41.39, 'timestamp': 1781614426}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 26.19, 'humidity': 52.91, 'timestamp': 1781614428}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 25.82, 'humidity': 40.63, 'timestamp': 1781614430}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 26.36, 'humidity': 50.89, 'timestamp': 1781614432}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 20.41, 'humidity': 55.88, 'timestamp': 1781614434}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 24.39, 'humidity': 58.0, 'timestamp': 1781614436}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 22.87, 'humidity': 44.09, 'timestamp': 1781614438}
+Published: {'device_id': 'MacMockSensor-01', 'temperature': 20.01, 'humidity': 52.25, 'timestamp': 178161444}
+```
+
+cat `sparkplug_test_publisher.py`
+```bash
+import time
+import random
+import paho.mqtt.client as mqtt
+from pysparkplug import NBirth, NData, Metric, DataType, get_current_timestamp
+
+# Configuration
+BROKER = "localhost"
+PORT = 1883
+GROUP_ID = "MacLocalTest"
+EDGE_NODE_ID = "Mac-Node-01"
+
+# Manually construct specification-compliant Sparkplug B topics
+TOPIC_NBIRTH = f"spBv1.0/{GROUP_ID}/NBIRTH/{EDGE_NODE_ID}"
+TOPIC_NDATA = f"spBv1.0/{GROUP_ID}/NDATA/{EDGE_NODE_ID}"
+
+# Initialize standard paho-mqtt client
+client = mqtt.Client()
+print(f"Connecting to Mosquitto broker at {BROKER}:{PORT}...")
+client.connect(BROKER, PORT, 60)
+client.loop_start()
+
+# 1. Publish Node Birth Certificate (NBIRTH)
+print("Publishing binary Sparkplug B NBIRTH payload...")
+ts_birth = get_current_timestamp()
+metrics_birth = (
+    Metric(name="Temperature", datatype=DataType.FLOAT, value=22.0, timestamp=ts_birth),
+    Metric(name="Humidity", datatype=DataType.FLOAT, value=50.0, timestamp=ts_birth),
+)
+nbirth_payload = NBirth(timestamp=ts_birth, seq=0, metrics=metrics_birth)
+client.publish(TOPIC_NBIRTH, nbirth_payload.encode(), qos=1)
+
+print("Node is ONLINE. Sending NDATA every 5 seconds. Press Ctrl+C to stop.")
+
+seq = 1
+try:
+    while True:
+        temp_val = round(random.uniform(20.0, 35.0), 2)
+        humid_val = round(random.uniform(40.0, 60.0), 2)
+        
+        # 2. Publish Node Data (NDATA)
+        ts_data = get_current_timestamp()
+        metrics_data = (
+            Metric(name="Temperature", datatype=DataType.FLOAT, value=temp_val, timestamp=ts_data),
+            Metric(name="Humidity", datatype=DataType.FLOAT, value=humid_val, timestamp=ts_data),
+        )
+        ndata_payload = NData(timestamp=ts_data, seq=seq, metrics=metrics_data)
+        
+        client.publish(TOPIC_NDATA, ndata_payload.encode(), qos=1)
+        print(f"Sent Sparkplug NDATA (Seq: {seq}) -> Temp: {temp_val} | Humid: {humid_val}")
+        
+        seq = (seq + 1) % 256  # Sparkplug sequence numbers loop 0-255
+        time.sleep(5)
+
+except KeyboardInterrupt:
+    print("\nStopping script...")
+    client.loop_stop()
+    client.disconnect()
+
+```
+
+Sample Output:
+
+```bash
+Connecting to Mosquitto broker at localhost:1883...
+Publishing binary Sparkplug B NBIRTH payload...
+Node is ONLINE. Sending NDATA every 5 seconds. Press Ctrl+C to stop.
+Sent Sparkplug NDATA (Seq: 1) -> Temp: 28.87 | Humid: 49.59
+Sent Sparkplug NDATA (Seq: 2) -> Temp: 26.07 | Humid: 51.89
+Sent Sparkplug NDATA (Seq: 3) -> Temp: 31.36 | Humid: 46.76
+Sent Sparkplug NDATA (Seq: 4) -> Temp: 21.02 | Humid: 46.02
+Sent Sparkplug NDATA (Seq: 5) -> Temp: 34.21 | Humid: 56.91
+Sent Sparkplug NDATA (Seq: 6) -> Temp: 25.27 | Humid: 41.77
+Sent Sparkplug NDATA (Seq: 7) -> Temp: 30.73 | Humid: 58.52
+```
+
+
+Terminal History
+s
+```terminal
+source venv/bin/activate
+pip install paho-mqtt
+python mqtt_test_publisher.py
+pip install pysparkplug
+nano sparkplug_test_publisher.py  
+```
