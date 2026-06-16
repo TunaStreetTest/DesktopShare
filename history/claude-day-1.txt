@@ -304,9 +304,59 @@ steven.matison@FTF3XR2065 DesktopShare % claude
   For your workflow specifically: it can run the install scripts in files/agent-*.sh, test flows on Minikube, capture output into history/, then iterate the
   corresponding root .md plan until you promote it to completed/.
 
-✻ Cogitated for 3m 23s
+ Cogitated for 3m 23s
 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-❯ 
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+※ recap: You're exploring the DesktopShare repo and asking general questions about Claude Code's capabilities, most recently whether it works with Kubernetes (it 
+  does). Next: tell me what you'd like to dig into or build. (disable recaps in /config)
+
+❯ what files have I changed?                                                                                                                                           
+
+⏺ Bash(git status && echo "---" && git diff --stat)
+  ⎿  On branch main
+     Your branch is up to date with 'origin/main'.
+     … +6 lines (ctrl+o to expand)
+
+⏺ No tracked files modified. One untracked file:
+
+  - history/claude-day-1.txt (new, not yet added to git)
+
+  Working tree is otherwise clean and up to date with origin/main.
+
+✻ Brewed for 7s
+
+❯ commit my changes with a descriptive message                                                                                                                         
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Bash(git log --oneline -10)
+  ⎿  35c57c0 Mac CSO Zellij
+     b3835ba SparkPlug Demo 1
+     0ce7976 Update sparkplug-iott.md
+     … +7 lines (ctrl+o to expand)
+     
+⏺ Bash(git add history/claude-day-1.txt && git commit -m "$(cat <<'EOF'
+      Add Claude Code day-1 terminal history…)
+  ⎿  [main 03c952e] Add Claude Code day-1 terminal history
+      1 file changed, 312 insertions(+)
+      create mode 100644 history/claude-day-1.txt
+     … +5 lines (ctrl+o to expand)
+  
+⏺ Committed as 03c952e — "Add Claude Code day-1 terminal history". Branch is one commit ahead of origin/main; let me know if you want me to push.
+
+✻ Brewed for 13s
+
+❯ push that commit                                                                                                                                                                                                                                                                 
+
+⏺ Bash(git push)
+  ⎿  To https://github.com/cldr-steven-matison/DesktopShare.git
+        35c57c0..03c952e  main -> main
+
+⏺ Pushed — 35c57c0..03c952e is now on origin/main.
+
+✻ Cooked for 5s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯  
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   ? for shortcuts
+
