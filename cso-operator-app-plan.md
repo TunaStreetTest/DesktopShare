@@ -37,7 +37,7 @@ All YAMLs live in `~/Documents/GitHub/ClouderaStreamingOperators/`. The new app'
 
 Deployment: `vllm-server` → Service: `vllm-service.default:8000`
 Image: `vllm/vllm-openai:latest`
-Args (current deployed version, not the blog's 2k version):
+Args:
 ```
 Qwen/Qwen2.5-3B-Instruct
 --quantization bitsandbytes
@@ -68,9 +68,9 @@ Service: `embedding-server-service.default:80` (in-cluster) — port-forwarded t
 Model: `nomic-ai/nomic-embed-text-v1` (768-d). `--hf-api-token` injected via launch args.
 Endpoint: `POST /embed` — body `{"inputs": "..."}` returns `[[float, float, ...]]`.
 
-### Whisper server (NOT yet in CSO repo — owned by this app)
+### Whisper server
 
-Lives entirely in `cso-operator-app/whisper/`. Two artifacts copied verbatim from the audio post:
+Owned by this app. Lives in `cso-operator-app/whisper/`. Two artifacts:
 
 #### `Dockerfile.whisper`
 ```dockerfile
@@ -218,9 +218,9 @@ Topics the app reads / writes:
 | `new_audio` | NiFi `IngestDataToStream` | NiFi `StreamToWhisper` | raw audio bytes |
 | `new_documents` | NiFi `IngestToStream` *and* `StreamToWhisper` | NiFi `StreamTovLLM` | text |
 
-Bootstrap discovered from CSM cluster service in `cld-streaming` (resolved at app startup via `KafkaCluster` resource or env override). App uses `aiokafka` for topic stats + tail.
+Bootstrap: `my-cluster-kafka-bootstrap.cld-streaming.svc:9092`. App uses `aiokafka` for topic stats + tail.
 
-> Important correction vs. early notes: there is **no `transcribed_text` topic**. Whisper transcripts re-enter `new_documents` so the existing RAG flow handles them unchanged.
+There is no separate transcript topic — Whisper republishes into `new_documents` so the existing RAG flow handles transcripts unchanged.
 
 ### NiFi (CFM, namespace `cfm-streaming`)
 
@@ -234,9 +234,9 @@ REST: same host. Process groups (each shipped as JSON in `flows/`):
 | `StreamToWhisper` | Transcribe | `ConsumeKafka_2_6 new_audio` | `InvokeHTTP whisper-service:8001/transcribe` → `EvaluateJsonPath $.text` → `ReplaceText` → `PublishKafka_2_6 new_documents` |
 | `StreamTovLLM` | RAG indexer | `ConsumeKafka_2_6 new_documents` | `SplitText` (20-line) → `ExtractText` → `ReplaceText` (embed JSON) → `InvokeHTTP embed` → `EvaluateJsonPath` → `ReplaceText` (Qdrant upsert) → `InvokeHTTP qdrant upsert` |
 
-**Decision**: add a `ListenHTTP` processor at the head of `IngestToStream` and `IngestDataToStream` so the backend can `POST` files directly without the GenerateFlowFile/InvokeHTTP-from-URL pattern. The original processors stay for "demo without uploading" mode.
+A `ListenHTTP` processor is added at the head of `IngestToStream` and `IngestDataToStream` so the backend can `POST` files directly. The original `GenerateFlowFile`+`InvokeHTTP` pair stays in place to support a "demo without uploading" path that pulls from a sample URL.
 
-> Future: when CFM ships flow CRs, swap JSON import for declarative CRs. Backend stays the same since it speaks NiFi REST.
+When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend is unaffected since it speaks NiFi REST.
 
 ## App architecture
 
@@ -342,7 +342,7 @@ cso-operator-app/
 
 ## Build / deploy
 
-**Image strategy** (decision: local-only, no registry push — same on Mac and Windows):
+**Image strategy**: local-only, no registry push. Identical command on Mac and Windows:
 
 ```bash
 # Mac and Windows, identical
@@ -363,7 +363,7 @@ data:
   EMBED_URL: "http://embedding-server-service.default.svc.cluster.local:80"
   WHISPER_URL: "http://whisper-service.default.svc.cluster.local:8001"
   NIFI_URL: "https://mynifi-web.mynifi.cfm-streaming.svc.cluster.local"
-  KAFKA_BOOTSTRAP: "<resolved-from-CSM-cluster>"
+  KAFKA_BOOTSTRAP: "my-cluster-kafka-bootstrap.cld-streaming.svc:9092"
   QDRANT_COLLECTION: "my-rag-collection"
   EMBED_DIM: "768"
   TOPIC_AUDIO: "new_audio"
@@ -402,17 +402,14 @@ cd frontend && npm run dev
 9. **Containerize** + deploy on Mac Minikube.
 10. **Test on Windows** Minikube — adjust ConfigMap if any service names differ; rebuild whisper image with `eval $(minikube docker-env)`.
 
-## Open / deferred
+## Out of scope
 
-- **NiFi flow CRs**: when CFM exposes them, swap JSON-import for declarative CRs. Backend stays the same.
-- **Streaming microphone input**: future enhancement (live audio → NiFi `ListenWebSocket` or chunked HTTP).
-- **Multi-cluster demo**: out of scope — one Minikube at a time.
-- **Auth/TLS**: explicitly out of scope for the demo.
-- **Kafka bootstrap discovery**: assume manual/env override on first run; auto-resolve via CSM `KafkaCluster` later.
+- **Streaming microphone input** — future enhancement (live audio → NiFi `ListenWebSocket` or chunked HTTP).
+- **Multi-cluster demo** — one Minikube at a time.
+- **Auth/TLS** — local demo only.
 
-## Pre-flight checks before coding
+## Prerequisites
 
-- [ ] Confirm `hf-token` Secret exists in `default` (vLLM + whisper-build need it).
-- [ ] Confirm CSM Kafka bootstrap address (likely `<cluster-name>-kafka-bootstrap.cld-streaming.svc:9092`).
-- [ ] Confirm `IngestDataToStream.json` in `DesktopShare/files/` is the audio variant (vs. `IngestDocsToStream.json`); reconcile names with the audio post's "IngestAudioToStream" UI label.
-- [ ] Decide whether to leave the original `GenerateFlowFile`+`InvokeHTTP` URL fetcher in place alongside `ListenHTTP` (recommend yes — gives "demo with no upload" path).
+- `hf-token` Secret in `default` namespace (used by vLLM and the Whisper image build).
+- CFM, CSM, CSA operators installed in their respective namespaces.
+- Minikube running with GPU passthrough on the host.
