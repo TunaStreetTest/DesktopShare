@@ -6,7 +6,7 @@ Used with [Cloudera Streaming Operators](https://cldr-steven-matison.github.io/b
 
 This repository serves as my **cross-platform workspace** for developing, testing, and sharing assets while working across macOS and Windows environments. It’s tightly integrated with my Cloudera Streaming Operators (CSO) projects — NiFi, Flink, Kafka, Minikube/Kubernetes, custom processors, and more.
 
-Root-level Markdown files are **built with AI** (primarily Grok + Gemini). I iterate on them until they’re tested, then move them into the appropriate folders to keep the root focused on **new ideas and in-progress plans**.
+Root-level Markdown files are **built with AI** (Grok,Gemini,Claude). I iterate on them until they’re tested, then move them into the appropriate folders to keep the root focused on **new ideas and in-progress plans**.
 
 ---
 
@@ -22,7 +22,7 @@ Root-level Markdown files are **built with AI** (primarily Grok + Gemini). I ite
 
 I use this repo to:
 - Rapidly prototype integration plans and test configurations.
-- Share content across macOS (paid gemini/grok) and Windows (gpu testing free gemini/grok).
+- Share content across macOS (paid gemini/grok + claude) and Windows & Nvidia (gpu testing).
 - Store supporting assets (YAML, Python, JSON, etc.) before they’re promoted to dedicated repos or the blog.
 - Keep a clean history of how these plans have evolved from initial plan → completed.
 
@@ -61,7 +61,7 @@ Everything here ties back to **Cloudera Streaming Operators** (CFM, CSA, CSM) ru
 - **Kubernetes / Minikube** Mac and Windows with GPU support
 - **Custom Processors** (Python, Java)
 - **Observability**: Prometheus, Grafana, Kafka Surveyor
-- **AI / RAG**: Local models, audio transcription, fraud detection
-- **Cloudera**: Releases, Integrations, How Tos, Tutorials
+- **AI**: Local models, audio transcription, fraud detection, local ai, edge ai, agent ai
+- **Cloudera**: Releases, Integrations, How Tos, Tutorials, Documents
 
 ---
