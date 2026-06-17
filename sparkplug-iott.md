@@ -627,7 +627,7 @@ Sent Sparkplug NDATA (Seq: 7) -> Temp: 30.73 | Humid: 58.52
 
 
 Terminal History
-s
+
 ```terminal
 source venv/bin/activate
 pip install paho-mqtt
