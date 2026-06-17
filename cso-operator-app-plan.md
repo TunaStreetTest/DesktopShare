@@ -4,6 +4,8 @@ A single demo app that exercises every concept from the **RAG with Cloudera Stre
 
 Supersedes `rag-app-plan.md` (RAG-only scope). Local demo only — no auth, no production hardening.
 
+> **Status:** end-to-end working on Mac and Windows Minikube. Living spec — keep in root while we iterate. Companion test plan: [`cso-operator-app-windows-test-plan.md`](cso-operator-app-windows-test-plan.md).
+
 ## Source posts (canonical)
 
 - **RAG with Cloudera Streaming Operators** — `cldr-steven-matison.github.io/_posts/2026-03-22-RAG with Cloudera Streaming Operators.md`
@@ -37,20 +39,9 @@ All YAMLs live in `~/Documents/GitHub/ClouderaStreamingOperators/`. The new app'
 
 Deployment: `vllm-server` → Service: `vllm-service.default:8000`
 Image: `vllm/vllm-openai:latest`
-Args:
-```
-Qwen/Qwen2.5-3B-Instruct
---quantization bitsandbytes
---load-format bitsandbytes
---gpu-memory-utilization 0.75
---max-model-len 32000
---enable-chunked-prefill
---enforce-eager
---enable-auto-tool-choice
---tool-call-parser qwen3_coder
-```
-Env: `HF_TOKEN` from `Secret/hf-token` key `HF_TOKEN`. GPU limit 1. `/dev/shm` emptyDir 2Gi.
-Endpoint used by app: `POST /v1/chat/completions` (OpenAI-compatible, supports `stream: true`).
+Currently serving **`Qwen/Qwen2.5-1.5B-Instruct`** (the YAML is named after the original 3B target; 1.5B is what's loaded on the validated Windows cluster). The backend's `VLLM_MODEL` must match what `GET /v1/models` reports — `/api/health` validates this and `HealthBar` surfaces a mismatch as a red dot with the expected vs loaded names in the tooltip.
+
+Endpoint used by app: `POST /v1/chat/completions` (OpenAI-compatible). The backend currently does a **non-streaming** chat completion and re-emits the answer as a single SSE delta — see `Backend endpoints → /api/query`.
 
 ### Qdrant (`qdrant-deployment.yaml`)
 
@@ -229,17 +220,17 @@ There is no separate transcript topic — Whisper republishes into `new_document
 UI (in-cluster): `https://mynifi-web.mynifi.cfm-streaming.svc.cluster.local/nifi/`
 REST: same host. Auth: Bearer token via `POST /nifi-api/access/token`. Admin credentials are in `Secret/nifi-admin-creds` (keys `username`, `password`) in `cfm-streaming`. Backend caches the token and refreshes on 401. The shared httpx client must keep cookies cleared on NiFi calls — when both the Bearer and a session cookie (`INGRESSCOOKIE` / `__Secure-Request-Token`) are present on a write, NiFi falls into cookie-auth mode and rejects with 403/CSRF.
 
-All four flows are imported under a single parent process group (`CSOOperatorApp`) for one-click drag-and-drop. The resolver BFS-walks PGs from root to find the four by name.
+All three flows are imported under a single parent process group (`CSOOperatorApp`) for one-click drag-and-drop. The resolver BFS-walks PGs from root to find them by name.
 
 Process groups (shipped as one JSON in `flows/CSOOperatorApp.json`):
 
 | Flow | Role | Inputs | Outputs |
 |---|---|---|---|
-| `IngestDataToStream` | Unified ingest (docs + audio) | `ListenHTTP` (added) **or** `GenerateFlowFile`+`InvokeHTTP` | `new_documents` (docs) / `new_audio` (audio) |
+| `IngestDataToStream` | Unified ingest (docs + audio) | Single `ListenHTTP` on `:9000/contentListener` | `RouteOnAttribute` on `mime.type` → `new_documents` (docs) / `new_audio` (audio) |
 | `StreamToWhisper` | Transcribe | `ConsumeKafka_2_6 new_audio` | `InvokeHTTP whisper-service:8001/transcribe` → `EvaluateJsonPath $.text` → `ReplaceText` → `PublishKafka_2_6 new_documents` |
 | `StreamTovLLM` | RAG indexer | `ConsumeKafka_2_6 new_documents` | `SplitText` (20-line) → `ExtractText` → `ReplaceText` (embed JSON) → `InvokeHTTP embed` → `EvaluateJsonPath` → `ReplaceText` (Qdrant upsert) → `InvokeHTTP qdrant upsert` |
 
-A `ListenHTTP` processor is added at the head of `IngestDataToStream` so the backend can `POST` files directly. The original `GenerateFlowFile`+`InvokeHTTP` pair stays in place to support a "demo without uploading" path that pulls from a sample URL. Until the ListenHTTP entry point is wired, the backend falls back to publishing the upload directly to `new_documents` / `new_audio` via `aiokafka` — the consumer flows still pick it up.
+The backend posts every upload — doc or audio — to `http://mynifi.cfm-streaming.svc.cluster.local:9000/contentListener` with the resolved `Content-Type` so `RouteOnAttribute` can branch. There is no per-type endpoint and no `aiokafka` direct-publish fallback; failures bubble up as a 502 from `/api/ingest` so they're visible in the UI status line.
 
 When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend is unaffected since it speaks NiFi REST.
 
@@ -274,17 +265,17 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 
 | Endpoint | Action |
 |---|---|
-| `POST /api/query` | Embed → Qdrant top-k → build prompt → vLLM (SSE; pass through native vLLM stream chunks) |
-| `POST /api/ingest/doc` | Multipart upload → `POST` to `IngestDataToStream` ListenHTTP (doc path) |
-| `POST /api/ingest/audio` | Multipart upload → `POST` to `IngestDataToStream` ListenHTTP |
-| `GET  /api/nifi/state` | State of the 4 process groups |
+| `POST /api/query` | Embed → Qdrant top-k → build prompt (chunks capped at 500 chars, vector-leakage chunks dropped) → vLLM **non-streaming** chat completion → re-emit as one OpenAI-style SSE delta + `[DONE]`. On non-2xx vLLM responses, emit `event: error` with the body so the UI can show it instead of hanging. Mirrors the blog's working `query-rag-5.py` request shape. |
+| `POST /api/ingest` | Single multipart upload endpoint. Forwards the file body to `NIFI_INGEST_URL` (default `http://mynifi.cfm-streaming.svc.cluster.local:9000/contentListener`) with the resolved `Content-Type`; NiFi's `RouteOnAttribute` branches docs vs audio. Returns NiFi's status + first 500 bytes of body so the UI can surface real failures. |
+| `GET  /api/sample-audio` | Streams the blog's reference WAV through the backend so the browser doesn't hit upstream CORS. |
+| `GET  /api/nifi/state` | State of the 3 process groups |
 | `POST /api/nifi/{name}/start\|stop` | Toggle by name (resolved to UUID + revision at startup) |
 | `GET  /api/qdrant/stats` | Point count, segments |
 | `POST /api/qdrant/recreate` | Drop + recreate `my-rag-collection` (768-d Cosine) |
 | `GET  /api/kafka/topics` | Depth for the watched topics (`new_audio`, `new_documents`) |
 | `GET  /api/kafka/all-topics` | Depth + partitions for every non-internal topic |
 | `GET  /api/kafka/tail/{topic}` | SSE tail of recent messages |
-| `GET  /api/health` | Pings every backing service |
+| `GET  /api/health` | Pings every backing service. The `vllm` entry parses `/v1/models` and fails the service if `VLLM_MODEL` is not loaded — returns `configured` + `loaded` so a misconfigured name shows up in the HealthBar tooltip. |
 
 **Stack**: FastAPI, `httpx.AsyncClient` (vLLM/Qdrant/embedding/NiFi/Whisper), `aiokafka` (topic stats + tail), Pydantic settings from ConfigMap/env.
 
@@ -311,27 +302,25 @@ State: React hooks. Streaming: `EventSource` for SSE. UI primitives: shadcn Butt
 ```
 cso-operator-app/
 ├── README.md
+├── Dockerfile                    # multi-stage: vite frontend → python backend
 ├── backend/
 │   ├── main.py
 │   ├── routers/  (query.py, ingest.py, nifi.py, qdrant.py, kafka.py, health.py)
 │   ├── services/ (vllm.py, qdrant.py, embedding.py, whisper.py, nifi.py, kafka.py)
 │   ├── config.py
-│   ├── requirements.txt
-│   └── Dockerfile
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/  (components/, pages/, api/, hooks/, types.ts)
 │   ├── vite.config.ts, tailwind.config.ts, package.json
 ├── whisper/
 │   ├── Dockerfile.whisper        # full Dockerfile from audio post
 │   └── whisper-server.yaml
-├── flows/                        # exported NiFi process groups w/ ListenHTTP added
-│   ├── IngestDataToStream.json
-│   ├── StreamToWhisper.json
-│   └── StreamTovLLM.json
+├── flows/                        # exported NiFi process groups (single ListenHTTP entry)
+│   └── CSOOperatorApp.json       # parent PG bundling IngestDataToStream + StreamToWhisper + StreamTovLLM
 ├── k8s/
 │   ├── deployment.yaml           # the app itself
 │   ├── service.yaml              # NodePort 30080
-│   ├── configmap.yaml            # all backing service URLs/ports
+│   ├── configmap.yaml            # all backing service URLs/ports + NIFI_INGEST_URL + VLLM_MODEL
 │   └── backing/                  # copies from ClouderaStreamingOperators
 │       ├── vllm-Qwen2.5-3B-Instruct.yaml
 │       ├── qdrant-deployment.yaml
@@ -339,10 +328,12 @@ cso-operator-app/
 ├── samples/
 │   ├── OSR_us_000_0010_8k.wav    # blog reference audio
 │   └── streamtovllm.md           # blog reference doc
-├── scripts/
+├── scripts/                      # baked into the runtime image
+│   ├── diagnose-query.py         # in-pod probe of env, vLLM, /api/health, /api/query SSE body
 │   ├── mac-dev.sh                # port-forwards + uvicorn + vite
 │   ├── deploy.sh                 # minikube image build + kubectl apply
-│   └── bootstrap-stack.sh        # apply backing/, build whisper image, import flows
+│   ├── bootstrap-stack.sh        # apply backing/, build whisper image, import flows
+│   └── kafka-external-listener.sh
 └── Makefile
 ```
 
@@ -365,10 +356,12 @@ The app Dockerfile is multi-stage: Node builds the React bundle, slim Python ima
 ```yaml
 data:
   VLLM_URL: "http://vllm-service.default.svc.cluster.local:8000"
+  VLLM_MODEL: "Qwen/Qwen2.5-1.5B-Instruct"   # must match GET /v1/models
   QDRANT_URL: "http://qdrant.default.svc.cluster.local:6333"
   EMBED_URL: "http://embedding-server-service.default.svc.cluster.local:80"
   WHISPER_URL: "http://whisper-service.default.svc.cluster.local:8001"
-  NIFI_URL: "https://mynifi-web.mynifi.cfm-streaming.svc.cluster.local"
+  NIFI_URL: "https://mynifi-web.cfm-streaming.svc.cluster.local"
+  NIFI_INGEST_URL: "http://mynifi.cfm-streaming.svc.cluster.local:9000/contentListener"
   KAFKA_BOOTSTRAP: "my-cluster-kafka-bootstrap.cld-streaming.svc:9092"
   QDRANT_COLLECTION: "my-rag-collection"
   EMBED_DIM: "768"
@@ -377,6 +370,13 @@ data:
 ```
 
 For Mac dev, `.env.local` overrides with `localhost` ports (8080 for embedding via port-forward, 8000/6333/8001 for the rest).
+
+> **Gotcha:** `kubectl set env deploy/cso-operator-app VLLM_MODEL=...` on the deployment **shadows** the ConfigMap. If `/api/health` reports a model mismatch even after applying a fresh ConfigMap, clear the override:
+>
+> ```bash
+> kubectl set env deploy/cso-operator-app VLLM_MODEL-
+> kubectl rollout restart deploy/cso-operator-app
+> ```
 
 ## Mac dev workflow
 
@@ -397,16 +397,24 @@ cd frontend && npm run dev
 
 ## Implementation order
 
-1. **Repo scaffold** + README + Makefile + ConfigMap.
-2. **Backend skeleton** + `/api/health` (proves connectivity to all five services).
-3. **Query path** end-to-end (embed → Qdrant → vLLM streaming) — most demoable, smallest surface.
-4. **NiFi controls** — name→UUID resolution, start/stop, state.
-5. **Qdrant management** — recreate, stats.
-6. **Kafka activity** — topics endpoint, then SSE tail with `aiokafka`.
-7. **Ingest** — add ListenHTTP to `IngestDataToStream` flow JSON, then frontend dropzone.
-8. **Frontend polish** — Demo Mode walkthrough, health bar, toasts, source-chunk reveal in chat.
-9. **Containerize** + deploy on Mac Minikube.
-10. **Test on Windows** Minikube — adjust ConfigMap if any service names differ; rebuild whisper image with `eval $(minikube docker-env)`.
+All ten phases are done. Kept here for the historical narrative; current behavior is documented above.
+
+1. ✅ **Repo scaffold** + README + Makefile + ConfigMap.
+2. ✅ **Backend skeleton** + `/api/health` (proves connectivity to all five services). Later upgraded to validate `VLLM_MODEL` against `/v1/models`.
+3. ✅ **Query path** end-to-end. Originally streaming pass-through; reworked to mirror the blog's working `query-rag-5.py` (non-streaming POST) with errors surfaced as `event: error`.
+4. ✅ **NiFi controls** — name→UUID resolution, start/stop, state.
+5. ✅ **Qdrant management** — recreate, stats.
+6. ✅ **Kafka activity** — topics endpoint, then SSE tail with `aiokafka`.
+7. ✅ **Ingest** — collapsed to a single `ListenHTTP` at `:9000/contentListener` with `RouteOnAttribute` branching by mime type. Backend has one `/api/ingest`; the doc/audio split was removed. `/api/sample-audio` proxies the blog WAV to dodge browser CORS.
+8. ✅ **Frontend polish** — Demo Mode, health bar with mismatch tooltips, source-chunk reveal, visible SSE error panel.
+9. ✅ **Containerize** + deploy on Mac Minikube. `scripts/` baked into the image so `diagnose-query.py` is one `kubectl exec` away.
+10. ✅ **Test on Windows** Minikube — full path validated; gotchas captured in [`cso-operator-app-windows-test-plan.md`](cso-operator-app-windows-test-plan.md).
+
+## Open follow-ups
+
+- Decide on 1.5B vs 3B for the demo (currently 1.5B; 3B is the originally specified target and gives better RAG answers).
+- Optional: stream tokens as they generate instead of one-shot completion. The current non-streaming path was chosen to match the blog and surface errors cleanly; revisit if perceived latency becomes an issue.
+- Optional: bake an "expected models" allowlist into `/api/health` so the misconfig message names what *should* be loaded too.
 
 ## Out of scope
 
