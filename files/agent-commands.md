@@ -33,4 +33,10 @@ Next the following sample commands I am using to get my Telegram chat started:
 
 /bash cd ClouderaStreamingOperators && git add vllm-Qwen2.5-1.5B-Instruct.yaml && git add  vllm-Qwen2.5-3B-Instruct.yaml && git add vllm-Qwen2.5-7B-Instruct-AWQ.yaml
 /bash cd ClouderaStreamingOperators && git commit -m "vLLM Models" && git push
+
+/bash kubectl get pods --all-namespaces
+
+/bash cd ~/cso-operator-app && git pull
+
+
 ```
