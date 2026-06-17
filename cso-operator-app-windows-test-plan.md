@@ -9,6 +9,11 @@ Assumes the agent's WSL/Linux home has:
 - A Minikube up with GPU passthrough
 - License at `/home/tunas/license.txt` (or wherever your agent puts it)
 
+### Telegram `/bash` quirks (read before debugging)
+- **No stdin** — avoid `kubectl run --rm -i ...`; the `-i` waits forever for input that the agent can't attach. Use `kubectl exec` against an existing pod instead.
+- **No multi-line commands** — heredocs and any string with embedded newlines get mangled by the input box. Commit scripts to the repo and `kubectl exec ... python3 /app/scripts/...` instead of pasting Python inline.
+- **`wget`/`curl` may be missing** in slim images — use `python3 -c '...'` (one line) or, better, a committed script.
+
 ## 0. Clone the new repo
 
 ```bash
@@ -65,6 +70,7 @@ If the app is deployed in-cluster (recommended on Windows), skip this — the in
 NiFi UI: open via `kubectl port-forward -n cfm-streaming svc/mynifi-web 8443:8443` and visit `https://localhost:8443/nifi/`.
 - Username/password from `nifi-admin-creds` Secret in `cfm-streaming` (admin / `kubectl get secret nifi-admin-creds -n cfm-streaming -o jsonpath='{.data.password}' | base64 -d`).
 - Drag a Process Group from the toolbar onto the canvas. Upload `~/cso-operator-app/flows/CSOOperatorApp.json`. The bundle includes all 3 flows under a parent group named `CSOOperatorApp`.
+- `IngestDataToStream` exposes a single `ListenHTTP` on **port 9000** at path `/contentListener`. The flow's `RouteOnAttribute` branches docs (→ `new_documents`) vs audio (→ `new_audio`) based on `mime.type` / Content-Type. The backend posts every upload to `http://mynifi.cfm-streaming.svc.cluster.local:9000/contentListener` — no per-type endpoints anymore.
 - Wire the InvokeHTTP processors that hit `vllm-service`, `embedding-server-service`, `qdrant`, and `whisper-service` to the in-cluster service DNS names if the imported config still has localhost overrides from a Mac dev session.
 
 ## 6. Build and deploy the app
@@ -91,20 +97,19 @@ NiFi UI: open via `kubectl port-forward -n cfm-streaming svc/mynifi-web 8443:844
 
 ## 8. Smoke test from inside the cluster
 
-```bash
-/bash kubectl run curlpod --rm -i --restart=Never --image=curlimages/curl -- curl -s http://cso-operator-app:8000/api/health
-```
-**check:** all 6 services `ok: true` (vllm, qdrant, embedding, whisper, nifi, kafka).
+The repo ships `scripts/diagnose-query.py` baked into the runtime image — single-line probe of every hop the **Ask** button takes (env, vLLM `/v1/models`, vLLM chat completion, app `/api/health`, app `/api/query` SSE body).
 
 ```bash
-/bash kubectl run curlpod --rm -i --restart=Never --image=curlimages/curl -- curl -s http://cso-operator-app:8000/api/nifi/state
+/bash kubectl exec deploy/cso-operator-app -- python3 /app/scripts/diagnose-query.py
 ```
-**check:** 3 flows: `IngestDataToStream`, `StreamToWhisper`, `StreamTovLLM` with their states.
+**check:**
+- env block prints the resolved `VLLM_URL` / `VLLM_MODEL` / etc.
+- `GET vllm /v1/models` → `200`, lists the model `VLLM_MODEL` is configured for.
+- `POST vllm /v1/chat/completions` → `200` with a `choices[0].message.content` reply.
+- `GET app /api/health` → all six services `ok: true`. The vllm entry now also returns `configured` + `loaded` so a model-name mismatch is visible.
+- `POST app /api/query` → `event: sources` + a `data: {choices...delta.content}` chunk + `[DONE]`. Empty `sources` is fine on a fresh cluster — it just means Qdrant has 0 points yet.
 
-```bash
-/bash kubectl run curlpod --rm -i --restart=Never --image=curlimages/curl -- curl -s http://cso-operator-app:8000/api/kafka/all-topics
-```
-**check:** array including `new_audio` and `new_documents`.
+For the NiFi state and Kafka topics endpoints, the same `python3 -c` pattern via `kubectl exec` works (Telegram `/bash` doesn't choke on a single line); the diagnostic script's `/api/health` already proves Kafka has topics.
 
 ## 9. End-to-end demo
 
@@ -121,6 +126,10 @@ In the browser:
 |---|---|---|
 | `/api/health` `nifi.ok=false` `error: 401` | NIFI_PASSWORD not set on the deploy | step 6 `kubectl set env` |
 | `/api/health` `kafka.ok=false` `NodeNotReady` | App is using external bootstrap from a stale ConfigMap | Confirm `KAFKA_BOOTSTRAP=my-cluster-kafka-bootstrap.cld-streaming.svc:9092` (in-cluster) |
+| `/api/health` `vllm.ok=false` `configured ... is not loaded` | `VLLM_MODEL` doesn't match what vLLM actually serves; `kubectl set env` from a previous session shadows the ConfigMap | Match `VLLM_MODEL` to the id reported by `GET /v1/models`. If a stale env override is shadowing the CM: `kubectl set env deploy/cso-operator-app VLLM_MODEL-` (trailing `-` removes), then `kubectl rollout restart deploy/cso-operator-app` |
+| Ask button: blank answer, red error panel "vllm 404" | Same model-name mismatch as above | Same fix; re-run `scripts/diagnose-query.py` to confirm |
+| Ask button: streamed answer with no sources / generic answer | Qdrant has 0 points | Drop a doc through Ingest, give `StreamTovLLM` a few seconds to upsert, re-ask |
+| Ingest panel: CORS error on "Use sample audio" | (Pre-fix) Browser fetched `voiptroubleshooter.com` directly | Fixed — sample now goes through `/api/sample-audio` proxy |
 | Whisper pod CrashLoopBackOff | image pulled before built, or no GPU | `kubectl describe pod -l app=whisper-server`; rebuild with `eval $(minikube docker-env)` |
 | Recreate-collection 503 from app | Qdrant not yet up | `kubectl get pod -l app=qdrant`; wait |
 | 403 on NiFi start/stop | Stale token + cookie jar (resolved in code, but if seen) | Restart the app pod |
