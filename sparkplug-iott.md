@@ -1,9 +1,13 @@
+
+![Local AI with Jetson and Edge Flow Manager](/images/efm-nvidia-jetson.png)
+
+
 ### Overall Architecture
 - **Mosquitto MQTT Broker** → deployed in Minikube (central message bus).
 - **NVIDIA Jetson** → Edge host running your IoT simulator (publishes simulated Sparkplug B messages).
 - **NVIDIA Jetson** → Edge host streaming Environment Sensor data to Inference Model to capture Extreme Sensor Values → sound a local alarm on exceptions.
 - **EFM (Edge Flow Manager) / MiNiFi** → MiNiFi flow consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` and uses `ExecuteScript` for Edge Inference Model.
-- **CFM (Cloudera Flow Management) / NiFi** → Runs a NiFi flow that consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` components and converts to JSON using `ConvertRecord`.
+- **CFM (Cloudera Flow Management) Operator / NiFi** → Runs a NiFi flow that consumes Sparkplug B via the new `ConsumeMQTTIIoT` / `MQTTIIoTReader` components and converts to JSON using `ConvertRecord`.
 
 ---
 
@@ -623,7 +627,7 @@ Sent Sparkplug NDATA (Seq: 7) -> Temp: 30.73 | Humid: 58.52
 
 
 Terminal History
-s
+
 ```terminal
 source venv/bin/activate
 pip install paho-mqtt
