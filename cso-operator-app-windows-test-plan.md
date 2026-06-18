@@ -116,8 +116,8 @@ For the NiFi state and Kafka topics endpoints, the same `python3 -c` pattern via
 In the browser:
 1. **NiFi Controls** → click *Start* on each of the 3 cards. Badges turn `RUNNING` after the optimistic `STARTING…`.
 2. **Ingest** → drop a `.wav` (or click *Use sample audio* to fetch the blog reference clip). Status line should read `delivery: kafka, topic: new_audio, offset: …`.
-3. **Kafka Activity** → `new_audio` depth ticks up; a few seconds later `new_documents` ticks up too (Whisper transcribed it).
-4. **All Topics** (bottom) → `new_audio` and `new_documents` highlighted, depths growing.
+3. **Kafka Activity** → `new_audio` depth ticks up; a few seconds later `new_documents` ticks up too (Whisper transcribed it). Click *peek last 10* under either tile to see the actual messages without resetting the SSE tail.
+4. **All Topics** (bottom) → `new_audio` and `new_documents` highlighted, depths growing. Click `new_documents` to expand and confirm the Whisper transcript landed (use this to debug streaming-audio runs).
 5. **RAG Query** → ask *How is rice prepared?* (sample audio) or *What is StreamToVLLM?* (sample doc). Streamed answer appears; expand sources to see the Qdrant chunks.
 
 ## 10. Failure modes worth checking
@@ -134,6 +134,7 @@ In the browser:
 | Recreate-collection 503 from app | Qdrant not yet up | `kubectl get pod -l app=qdrant`; wait |
 | 403 on NiFi start/stop | Stale token + cookie jar (resolved in code, but if seen) | Restart the app pod |
 | Frontend 404 on `/api/nifi/<name>/start` | Flow not imported, or name mismatch | Re-import `flows/CSOOperatorApp.json`; check `/api/nifi/state` |
+| `peek last 10` empty on a topic with depth | Latest 10 messages all live in partitions that returned no records within the 2s drain window | Click *refresh* once; or bump `?limit=` in the URL. |
 
 ## 11. Tear-down (optional, full reset)
 

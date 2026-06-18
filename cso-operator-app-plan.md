@@ -275,6 +275,7 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 | `GET  /api/kafka/topics` | Depth for the watched topics (`new_audio`, `new_documents`) |
 | `GET  /api/kafka/all-topics` | Depth + partitions for every non-internal topic |
 | `GET  /api/kafka/tail/{topic}` | SSE tail of recent messages |
+| `GET  /api/kafka/peek/{topic}?limit=10` | Last N messages on any topic, newest-first. UTF-8 payload preview with a `payload_b64` fallback for binary topics like `new_audio`. Click-to-expand surface for the All Topics grid. |
 | `GET  /api/health` | Pings every backing service. The `vllm` entry parses `/v1/models` and fails the service if `VLLM_MODEL` is not loaded — returns `configured` + `loaded` so a misconfigured name shows up in the HealthBar tooltip. |
 
 **Stack**: FastAPI, `httpx.AsyncClient` (vLLM/Qdrant/embedding/NiFi/Whisper), `aiokafka` (topic stats + tail), Pydantic settings from ConfigMap/env.
@@ -291,7 +292,7 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 - **Ingest** — dropzone with format detection. Both paths feed `IngestDataToStream` (audio → `new_audio`, doc → `new_documents`).
 - **NiFi Controls** — three cards: `IngestDataToStream`, `StreamToWhisper`, `StreamTovLLM`. Start/stop with optimistic STARTING…/STOPPING… badge, live state polled every 4s.
 - **Kafka Activity** — live tail of `new_audio` (binary preview/length) and `new_documents` (text). Depth/lag indicators per topic.
-- **All Topics** (bottom of page) — live grid of every non-internal topic with partition count and depth, with `new_audio`/`new_documents` highlighted.
+- **All Topics** (bottom of page) — live grid of every non-internal topic with partition count and depth, with `new_audio`/`new_documents` highlighted. **Click any tile to peek the last 10 messages** (auto-refreshing every 5s) — used for spot-checking Whisper transcripts landing in `new_documents` without resetting the SSE tail.
 - **RAG Query** — chat UI with vLLM streaming, expandable source chunks (Qdrant payloads), prompt history.
 - **Health bar** — green/red dots per backing service, click for details.
 
