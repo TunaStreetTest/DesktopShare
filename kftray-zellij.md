@@ -1,9 +1,10 @@
 
 ## Kftray
 
-kftray (open-source, menu bar app for macOS/Linux/Windows) → Graphical UI to start/stop multiple saved configs, no terminal lock, shareable via Git. Looks perfect for your workflow.
-  https://kftray.app/downloads
-  https://kftray.app/docs/getting-started/quick-start
+kftray Graphical UI to start/stop multiple saved port forward configs.
+ 
+ - https://kftray.app/downloads
+ - https://kftray.app/docs/getting-started/quick-start
 
 
 Create the config `~/.config/kftray/config.json`:
@@ -45,6 +46,10 @@ kftui
 
 ## Zellij
 
+Zellij is a modern, Rust-based terminal workspace and multiplexer. 
+
+- https://zellij.dev/about/
+- https://zellij.dev/documentation/
 
 Create the layout: `~/.config/zellij/layout/kube-service-ports-mac-cso-observability.kdl`
 
