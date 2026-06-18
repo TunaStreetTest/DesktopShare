@@ -276,6 +276,10 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 | `GET  /api/kafka/all-topics` | Depth + partitions for every non-internal topic |
 | `GET  /api/kafka/tail/{topic}` | SSE tail of recent messages |
 | `GET  /api/kafka/peek/{topic}?limit=10` | Last N messages on any topic, newest-first. UTF-8 payload preview with a `payload_b64` fallback for binary topics like `new_audio`. Click-to-expand surface for the All Topics grid. |
+| `GET  /api/k8s/operators` | CSM/CSA/CFM operator presence — looks up `strimzi-cluster-operator`, `flink-kubernetes-operator`, `cfm-operator` and counts CRDs in their owned API groups. |
+| `GET  /api/k8s/pods` | Pod summary for `cld-streaming`, `cfm-streaming`, `default` — phase counts plus per-pod phase/ready/restarts/age/node/owner. |
+| `POST /api/k8s/deploy/{ns}/{name}/restart` | `kubectl rollout restart`-equivalent annotation patch. Namespace whitelisted to the three watched namespaces. |
+| `DELETE /api/k8s/pod/{ns}/{name}` | Delete a single pod with default grace period. Same namespace whitelist. |
 | `GET  /api/health` | Pings every backing service. The `vllm` entry parses `/v1/models` and fails the service if `VLLM_MODEL` is not loaded — returns `configured` + `loaded` so a misconfigured name shows up in the HealthBar tooltip. |
 
 **Stack**: FastAPI, `httpx.AsyncClient` (vLLM/Qdrant/embedding/NiFi/Whisper), `aiokafka` (topic stats + tail), Pydantic settings from ConfigMap/env.
@@ -293,6 +297,8 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 - **NiFi Controls** — three cards: `IngestDataToStream`, `StreamToWhisper`, `StreamTovLLM`. Start/stop with optimistic STARTING…/STOPPING… badge, live state polled every 4s.
 - **Kafka Activity** — live tail of `new_audio` (binary preview/length) and `new_documents` (text). Depth/lag indicators per topic.
 - **All Topics** (bottom of page) — live grid of every non-internal topic with partition count and depth, with `new_audio`/`new_documents` highlighted. **Click any tile to peek the last 10 messages** (auto-refreshing every 5s) — used for spot-checking Whisper transcripts landing in `new_documents` without resetting the SSE tail.
+- **Cloudera Operators** — three rows (CSM/Strimzi, CSA/Flink, CFM) showing ready/replicas, image, version, and CRD-presence count. Polls every 15s.
+- **Pods** — namespace-grouped view of `cld-streaming`, `cfm-streaming`, `default` with phase, ready, restarts, age, node, and **rollout-restart / delete-pod** actions per row (5s refresh, inline confirm on delete).
 - **RAG Query** — chat UI with vLLM streaming, expandable source chunks (Qdrant payloads), prompt history.
 - **Health bar** — green/red dots per backing service, click for details.
 
@@ -319,9 +325,10 @@ cso-operator-app/
 ├── flows/                        # exported NiFi process groups (single ListenHTTP entry)
 │   └── CSOOperatorApp.json       # parent PG bundling IngestDataToStream + StreamToWhisper + StreamTovLLM
 ├── k8s/
-│   ├── deployment.yaml           # the app itself
+│   ├── deployment.yaml           # the app itself (uses cso-operator-app SA)
 │   ├── service.yaml              # NodePort 30080
 │   ├── configmap.yaml            # all backing service URLs/ports + NIFI_INGEST_URL + VLLM_MODEL
+│   ├── rbac.yaml                 # ServiceAccount + cluster-wide reader + per-ns writer (cld-streaming, cfm-streaming, default)
 │   └── backing/                  # copies from ClouderaStreamingOperators
 │       ├── vllm-Qwen2.5-3B-Instruct.yaml
 │       ├── qdrant-deployment.yaml
@@ -416,6 +423,7 @@ All ten phases are done. Kept here for the historical narrative; current behavio
 - Decide on 1.5B vs 3B for the demo (currently 1.5B; 3B is the originally specified target and gives better RAG answers).
 - Optional: stream tokens as they generate instead of one-shot completion. The current non-streaming path was chosen to match the blog and surface errors cleanly; revisit if perceived latency becomes an issue.
 - Optional: bake an "expected models" allowlist into `/api/health` so the misconfig message names what *should* be loaded too.
+- Pod actions are scoped to single-pod delete + deployment rollout-restart. Future: scale, edit replicas, drain a node, kafka topic peek with offset selector.
 
 ## Out of scope
 
@@ -428,5 +436,6 @@ All ten phases are done. Kept here for the historical narrative; current behavio
 - `hf-token` Secret in `default` namespace (used by vLLM and the Whisper image build).
 - `nifi-admin-creds` Secret in `cfm-streaming` namespace (admin/password for the NiFi REST API). Backend reads the password into `NIFI_PASSWORD` for dev; in-cluster the values come from a Secret-backed env var.
 - CFM, CSM, CSA operators installed in their respective namespaces.
+- `kubectl apply -f k8s/rbac.yaml` for the ServiceAccount + RBAC the Operators / Pods panels need. For Mac dev this is unnecessary — the backend falls back to `~/.kube/config`.
 - Minikube running with GPU passthrough on the host.
 - For host-side dev: `scripts/kafka-external-listener.sh` applied to the Strimzi Kafka CR.

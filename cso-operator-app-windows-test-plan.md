@@ -81,9 +81,9 @@ NiFi UI: open via `kubectl port-forward -n cfm-streaming svc/mynifi-web 8443:844
 **check:** ends with `naming to docker.io/library/cso-operator-app:latest`. ~2 min (Node bundle + Python deps).
 
 ```bash
-/bash cd ~/cso-operator-app && kubectl apply -f k8s/configmap.yaml -f k8s/deployment.yaml -f k8s/service.yaml
+/bash cd ~/cso-operator-app && kubectl apply -f k8s/rbac.yaml -f k8s/configmap.yaml -f k8s/deployment.yaml -f k8s/service.yaml
 ```
-**check:** `kubectl get pod -l app=cso-operator-app` is Running. The deployment also needs the NiFi password — if `/api/health` shows `nifi: false`, add it to the ConfigMap or as an env var:
+**check:** `kubectl get pod -l app=cso-operator-app` is Running. The Pods + Operators panels need `rbac.yaml` (ServiceAccount + ClusterRole reader + per-namespace writer Roles); without it the panels render as 502/empty. The deployment also needs the NiFi password — if `/api/health` shows `nifi: false`, add it to the ConfigMap or as an env var:
 ```bash
 /bash kubectl set env deploy/cso-operator-app NIFI_USERNAME=admin NIFI_PASSWORD="$(kubectl get secret nifi-admin-creds -n cfm-streaming -o jsonpath='{.data.password}' | base64 -d)"
 ```
@@ -118,7 +118,9 @@ In the browser:
 2. **Ingest** → drop a `.wav` (or click *Use sample audio* to fetch the blog reference clip). Status line should read `delivery: kafka, topic: new_audio, offset: …`.
 3. **Kafka Activity** → `new_audio` depth ticks up; a few seconds later `new_documents` ticks up too (Whisper transcribed it). Click *peek last 10* under either tile to see the actual messages without resetting the SSE tail.
 4. **All Topics** (bottom) → `new_audio` and `new_documents` highlighted, depths growing. Click `new_documents` to expand and confirm the Whisper transcript landed (use this to debug streaming-audio runs).
-5. **RAG Query** → ask *How is rice prepared?* (sample audio) or *What is StreamToVLLM?* (sample doc). Streamed answer appears; expand sources to see the Qdrant chunks.
+5. **Cloudera Operators** → CSM, CSA, CFM all green with non-zero CRD counts.
+6. **Pods** → three namespace sections render. Click *restart* next to a `cso-operator-app-*` pod (it patches its own deployment — pod cycles, panel refreshes within 5–10s). Click *delete* on a vLLM pod and confirm; deployment brings up a replacement.
+7. **RAG Query** → ask *How is rice prepared?* (sample audio) or *What is StreamToVLLM?* (sample doc). Streamed answer appears; expand sources to see the Qdrant chunks.
 
 ## 10. Failure modes worth checking
 
@@ -134,6 +136,8 @@ In the browser:
 | Recreate-collection 503 from app | Qdrant not yet up | `kubectl get pod -l app=qdrant`; wait |
 | 403 on NiFi start/stop | Stale token + cookie jar (resolved in code, but if seen) | Restart the app pod |
 | Frontend 404 on `/api/nifi/<name>/start` | Flow not imported, or name mismatch | Re-import `flows/CSOOperatorApp.json`; check `/api/nifi/state` |
+| Operators / Pods panel: 502 or empty | `rbac.yaml` not applied (in-cluster only) | `kubectl apply -f k8s/rbac.yaml`, then `kubectl rollout restart deploy/cso-operator-app` |
+| Pods *restart* / *delete* button: `403 forbidden` | Pod is in a namespace outside `cld-streaming` / `cfm-streaming` / `default` | Expected — RoleBindings only cover those three. Add a Role + RoleBinding for the new ns or skip the action. |
 | `peek last 10` empty on a topic with depth | Latest 10 messages all live in partitions that returned no records within the 2s drain window | Click *refresh* once; or bump `?limit=` in the URL. |
 
 ## 11. Tear-down (optional, full reset)
