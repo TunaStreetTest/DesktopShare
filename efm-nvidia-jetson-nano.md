@@ -76,6 +76,46 @@ Now create a class and you can get to the Deploy Agent CLI Command Screen to ver
 
 [ I need to update this, we moved to the windows host IP for efm to be accessible to Jetson.  However the tunnel method is preferred since the url is consistent. Currently in windows the minikube sevice command the open port is random and you have to visit and append /efm/ui/ on end of the browser url  - better way would be appreciated ]
 
+### Windows Port Proxy Requirement (WSL2 + Jetson)
+
+Windows Firewall rules alone are not enough for WSL2 ports to be reachable from the LAN. You must also add a `portproxy` entry for each port the Jetson needs to reach. Without this, TCP connects succeed but Kafka protocol traffic is silently dropped.
+
+Check current portproxy rules (PowerShell as Administrator):
+
+```powershell
+netsh interface portproxy show all
+```
+
+Add entries for EFM and Kafka (replace `172.26.201.5` with your current WSL2 IP — check with `ip addr show eth0` in WSL2):
+
+```powershell
+netsh interface portproxy add v4tov4 listenport=10090 listenaddress=0.0.0.0 connectport=10090 connectaddress=172.26.201.5
+netsh interface portproxy add v4tov4 listenport=9092 listenaddress=0.0.0.0 connectport=9092 connectaddress=172.26.201.5
+```
+
+**Note:** The WSL2 IP can change after a reboot. If the Jetson suddenly can't reach EFM or Kafka, re-check the WSL2 IP and update the portproxy entries.
+
+### Restarting MiNiFi on the Jetson
+
+When deployed via EFM agent deployer with `serviceName=minifi`, try these in order:
+
+```bash
+# Option 1 — systemd service (most common)
+sudo systemctl restart minifi
+
+# Option 2 — find and kill the process (forces restart if watchdog is running)
+sudo kill $(pgrep -f minifi)
+
+# Option 3 — use the MiNiFi startup script directly
+~/minifi-1.26.02/bin/minifi.sh restart
+
+# Check status
+sudo systemctl status minifi
+tail -f ~/minifi-1.26.02/logs/minifi-app.log
+```
+
+If none of the above work, a Jetson reboot is the fallback. After reboot MiNiFi should auto-start if the service was registered at install time.
+
 
 Go ahead and grab the Linux agent cli code:
  
