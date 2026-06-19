@@ -76,24 +76,104 @@ Now create a class and you can get to the Deploy Agent CLI Command Screen to ver
 
 [ I need to update this, we moved to the windows host IP for efm to be accessible to Jetson.  However the tunnel method is preferred since the url is consistent. Currently in windows the minikube sevice command the open port is random and you have to visit and append /efm/ui/ on end of the browser url  - better way would be appreciated ]
 
-### Windows Port Proxy Requirement (WSL2 + Jetson)
+### Windows Networking: Mirrored Mode vs NAT Mode (WSL2 + Jetson)
 
-Windows Firewall rules alone are not enough for WSL2 ports to be reachable from the LAN. You must also add a `portproxy` entry for each port the Jetson needs to reach. Without this, TCP connects succeed but Kafka protocol traffic is silently dropped.
+**First — check which WSL2 networking mode you are in (PowerShell):**
 
-Check current portproxy rules (PowerShell as Administrator):
+```powershell
+wsl hostname -I
+```
+
+- If the first IP matches your Windows LAN IP (e.g. `192.168.1.121`) → you are in **mirrored networking mode**
+- If the first IP is a `172.x.x.x` address → you are in **NAT mode**
+
+#### Mirrored Networking Mode (current setup)
+
+WSL2 shares the Windows host IP directly. Any port bound on `0.0.0.0` inside WSL is reachable from the LAN at `192.168.1.121:<port>` — **no portproxy needed**.
+
+**DO NOT add portproxy rules in mirrored mode.** Stale portproxy rules pointing to old `172.x` WSL IPs will intercept traffic and cause silent connection failures even when the TCP test succeeds. Always check for and remove stale rules:
 
 ```powershell
 netsh interface portproxy show all
+# Delete any stale entries pointing to old 172.x addresses
+netsh interface portproxy delete v4tov4 listenport=9092 listenaddress=0.0.0.0
+netsh interface portproxy delete v4tov4 listenport=10090 listenaddress=0.0.0.0
 ```
 
-Add entries for EFM and Kafka (replace `172.26.201.5` with your current WSL2 IP — check with `ip addr show eth0` in WSL2):
+You still need Windows Firewall inbound rules for each port. Add them once (PowerShell as Administrator):
+
+```powershell
+New-NetFirewallRule -DisplayName "WSL EFM 10090" -Direction Inbound -Protocol TCP -LocalPort 10090 -Action Allow
+New-NetFirewallRule -DisplayName "WSL Kafka Brokers External" -Direction Inbound -Protocol TCP -LocalPort 31623,31850,31935,30336 -Action Allow
+```
+
+#### NAT Mode (older WSL2 setups)
+
+If you are in NAT mode, portproxy rules are required. Replace `172.26.201.5` with your current WSL2 IP (`ip addr show eth0` in WSL):
 
 ```powershell
 netsh interface portproxy add v4tov4 listenport=10090 listenaddress=0.0.0.0 connectport=10090 connectaddress=172.26.201.5
 netsh interface portproxy add v4tov4 listenport=9092 listenaddress=0.0.0.0 connectport=9092 connectaddress=172.26.201.5
 ```
 
-**Note:** The WSL2 IP can change after a reboot. If the Jetson suddenly can't reach EFM or Kafka, re-check the WSL2 IP and update the portproxy entries.
+The WSL2 IP changes on every reboot in NAT mode — update portproxy entries any time the Jetson loses connectivity.
+
+### Kafka External Access for NVIDIA / Jetson Agents
+
+`kafka-eval.yaml` only has `internal` listeners. External agents (Jetson, NVIDIA desktop) cannot reach Kafka brokers using internal cluster DNS. Use `kafka-nodeport.yaml` which adds an external NodePort listener with `advertisedHost` overrides so agents get `192.168.1.121` addresses back from Kafka metadata.
+
+**Apply the external listener config:**
+
+```bash
+kubectl apply -f ClouderaStreamingOperators/kafka-nodeport.yaml -n cld-streaming
+kubectl wait kafka/my-cluster --for=condition=Ready --timeout=120s -n cld-streaming
+```
+
+**Get assigned NodePorts after apply:**
+
+```bash
+kubectl get svc -n cld-streaming | grep "my-cluster-combined\|external-bootstrap"
+```
+
+Expected output (ports vary per deployment):
+```
+my-cluster-combined-0                 NodePort  ...  9094:31850/TCP
+my-cluster-combined-1                 NodePort  ...  9094:31935/TCP
+my-cluster-combined-2                 NodePort  ...  9094:30336/TCP
+my-cluster-kafka-external-bootstrap   NodePort  ...  9094:31623/TCP
+```
+
+**Confirm the advertised bootstrap address:**
+
+```bash
+kubectl get kafka my-cluster -n cld-streaming -o jsonpath='{.status.listeners[?(@.name=="external")].bootstrapServers}{"\n"}'
+# Should return: 192.168.1.121:31623
+```
+
+**Start port-forwards (required after every WSL/Windows restart):**
+
+The NodePorts live on the Minikube node (`192.168.49.2`), not directly on `192.168.1.121`. These port-forwards bridge them:
+
+```bash
+kubectl port-forward --address 0.0.0.0 svc/my-cluster-kafka-external-bootstrap 31623:9094 -n cld-streaming > /tmp/pf-kafka-bootstrap.log 2>&1 &
+kubectl port-forward --address 0.0.0.0 svc/my-cluster-combined-0 31850:9094 -n cld-streaming > /tmp/pf-kafka-0.log 2>&1 &
+kubectl port-forward --address 0.0.0.0 svc/my-cluster-combined-1 31935:9094 -n cld-streaming > /tmp/pf-kafka-1.log 2>&1 &
+kubectl port-forward --address 0.0.0.0 svc/my-cluster-combined-2 30336:9094 -n cld-streaming > /tmp/pf-kafka-2.log 2>&1 &
+```
+
+Verify all four are listening:
+
+```bash
+ss -tlnp | grep -E "31623|31850|31935|30336"
+```
+
+**Set MiNiFi `bootstrap.servers` on the Jetson/NVIDIA machine to:**
+
+```
+192.168.1.121:31623
+```
+
+No `/etc/hosts` entries or portproxy rules needed.
 
 ### Restarting MiNiFi on the Jetson
 
