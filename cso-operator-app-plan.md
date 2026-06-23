@@ -418,6 +418,67 @@ All ten phases are done. Kept here for the historical narrative; current behavio
 9. ✅ **Containerize** + deploy on Mac Minikube. `scripts/` baked into the image so `diagnose-query.py` is one `kubectl exec` away.
 10. ✅ **Test on Windows** Minikube — full path validated; gotchas captured in [`cso-operator-app-windows-test-plan.md`](cso-operator-app-windows-test-plan.md).
 
+## CPU variant (Mac, no GPU)
+
+A strict-CPU parallel stack for Mac dev when GPU passthrough isn't available (or isn't worth the setup cost). No Metal, no CUDA — runs on any Mac, including inside a generic Minikube. GPU manifests are untouched; the toggle is `STACK=cpu` on the `make bootstrap` / `make dev` targets. Windows demo path is unaffected.
+
+### What gets swapped
+
+| Service | GPU (default) | CPU (`STACK=cpu`) |
+|---|---|---|
+| vLLM | `vllm/vllm-openai:latest`, Qwen2.5-3B/1.5B-Instruct on `nvidia.com/gpu` | `ghcr.io/ggml-org/llama.cpp:server`, `Qwen/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M`, CPU-only |
+| Whisper | `streamwhisper:latest` (insanely-fast-whisper + flash-attn + CUDA 12.4, Whisper-large-v3) | `streamwhisper-cpu:latest` (faster-whisper `small`, int8 CTranslate2, no torch) |
+
+Everything else (Qdrant, the TEI embedding server which is already the `cpu-1.5` image, Kafka, NiFi, the app itself) is identical on both paths.
+
+### Files
+
+```
+k8s/backing/vllm-cpu.yaml                 # llama.cpp server Deployment + vllm-cpu-service
+k8s/backing/vllm-service-cpu-alias.yaml   # alias Service named `vllm-service` selecting CPU pods
+whisper/Dockerfile.whisper.cpu            # faster-whisper image
+whisper/whisper-server-cpu.yaml           # CPU Whisper Deployment + whisper-cpu-service
+whisper/whisper-service-cpu-alias.yaml    # alias Service named `whisper-service` selecting CPU pods
+```
+
+### Why aliases
+
+Backend ConfigMap pins `VLLM_URL` to `vllm-service.default.svc.cluster.local` and `WHISPER_URL` to `whisper-service.default.svc.cluster.local`. NiFi's `StreamToWhisper` flow has `whisper-service:8001/transcribe` baked into its `InvokeHTTP`. Rather than re-edit ConfigMap + flow JSON on every stack switch, the CPU bootstrap deletes the GPU Service and applies a same-named alias that selects the CPU deployment. The canonical DNS names stay valid; nothing downstream notices the swap.
+
+The CPU and GPU `-service` siblings (`vllm-cpu-service`, `whisper-cpu-service`) still exist as explicit handles — useful for side-by-side debugging when both stacks happen to be deployed (rare on Mac, where one usually has the RAM for only one).
+
+### Model name alignment
+
+llama.cpp's server returns the loaded GGUF identifier from `GET /v1/models`. The `vllm-cpu.yaml` args pass `--alias Qwen/Qwen2.5-1.5B-Instruct` so the reported name matches the existing `VLLM_MODEL` value in `k8s/configmap.yaml`. HealthBar's mismatch check stays green; no ConfigMap edit needed.
+
+### Usage
+
+```bash
+# CPU bootstrap (no $HF_TOKEN needed — Qwen2.5-1.5B-GGUF is public)
+make bootstrap STACK=cpu
+make dev STACK=cpu          # same port-forwards as GPU
+make backend                # unchanged
+make frontend               # unchanged
+
+# Switch back to GPU later
+export HF_TOKEN=...
+make bootstrap STACK=gpu
+```
+
+`scripts/bootstrap-stack.sh` is idempotent in both directions — running with the opposite `STACK` removes the previous variant's Deployments/aliases before applying the new ones.
+
+### Performance ceilings (Mac, strict CPU)
+
+- **llama.cpp Qwen2.5-1.5B Q4_K_M**: ~10–20 tok/s on M-series CPU cores (no Metal). First request loads the model into RAM (~1 GB).
+- **faster-whisper small int8**: ~5–10× realtime on CPU. The blog sample WAV (`OSR_us_000_0010_8k.wav`, ~30s) transcribes in ~3–6 s after the first warmup request. Cold-start is bounded because the image pre-bakes the model.
+
+These are intentionally demo-tier — the goal is "the same pipeline runs end-to-end with no NVIDIA dependency," not feature parity with the GPU path's `whisper-large-v3` quality.
+
+### Known gaps / future tweaks
+
+- `flows/CSOOperatorApp.json` still embeds the GPU-tuned `chunk_length_s=30, batch_size=24` and `beam_size` defaults via the `InvokeHTTP` URL alone — the server-side faster-whisper params are hard-coded in `Dockerfile.whisper.cpu`'s `main.py`. If we want runtime control, expose them as env vars on the CPU Deployment.
+- The CPU Whisper Service alias and GPU Service can't both exist in `default` simultaneously. If a future demo needs side-by-side, scope one of them to a different namespace.
+
 ## Open follow-ups
 
 - Decide on 1.5B vs 3B for the demo (currently 1.5B; 3B is the originally specified target and gives better RAG answers).
