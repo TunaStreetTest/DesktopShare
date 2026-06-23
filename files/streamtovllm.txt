@@ -1,0 +1,6 @@
+StreamToVLLM is a specialized data engineering framework. 
+It connects Apache NiFi to vLLM inference servers. 
+The system uses Qdrant as a vector database to store document content. 
+This allows for local RAG (Retrieval-Augmented Generation) on Windows WSL2 machines. 
+The main goal of the project is to demonstrate streaming AI 
+using Cloudera Streaming Operators and dedicated GPU hardware.
