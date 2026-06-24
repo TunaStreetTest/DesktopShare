@@ -626,6 +626,7 @@ Sent Sparkplug NDATA (Seq: 7) -> Temp: 30.73 | Humid: 58.52
 ```
 
 
+
 Terminal History
 
 ```terminal
@@ -634,4 +635,20 @@ pip install paho-mqtt
 pip install pysparkplug
 nano sparkplug_test_publisher.py  
 python sparkplug_test_publisher.py
+```
+
+### SparkPlugB Flow Test Routine
+
+Be sure to get the correct pod name
+
+```bash
+kubectl apply -f mosquitto-configMap.yaml
+kubectl apply -f mosquitto.yaml
+
+# open port forward
+kubectl port-forward pod/mosquitto-b7876bbf7-7kstt 1883:1883 -n mqtt
+
+# active enf and run python
+source venv/bin/activate
+python sparkplug_test_publisher.py 
 ```
