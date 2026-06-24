@@ -631,7 +631,7 @@ Terminal History
 ```terminal
 source venv/bin/activate
 pip install paho-mqtt
-python mqtt_test_publisher.py
 pip install pysparkplug
 nano sparkplug_test_publisher.py  
+python sparkplug_test_publisher.py
 ```
