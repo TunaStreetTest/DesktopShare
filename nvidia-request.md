@@ -34,8 +34,8 @@ The **NVIDIA DGX Spark** is a compact, high-performance desktop AI system purpos
 - **Networking**: NVIDIA ConnectX-7 (200 Gb/s)
 - **Power & Form Factor**: ~240W, compact desktop design
 
-![NVIDIA DGX Spark](images/nvidia-dgx-spark.jpg){width=600px}
-![NVIDIA DGX Spark](images/nvidia-dgx-spark-2.jpg){width=600px}
+![NVIDIA DGX Spark](images/nvidia-dgx-spark.jpg){width=300px}
+![NVIDIA DGX Spark](images/nvidia-dgx-spark-2.jpg){width=300px}
 
 This system will be used exclusively for **local AI development and local demos**. It will allow me to:
 
