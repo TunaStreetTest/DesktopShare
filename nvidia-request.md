@@ -36,13 +36,9 @@ The **NVIDIA DGX Spark** is a compact, deskside “personal AI supercomputer” 
 - **OS/Software**: NVIDIA DGX OS with pre-installed AI tools, frameworks, libraries, playbooks, and NVIDIA AI Enterprise support
 - **Form Factor**: Compact desktop (~150 x 150 x 50.5 mm, 1.2 kg)
 
-<grok:render card_id=“20c793” card_type=“image_card” type=“render_searched_image”><argument name="image_id">Rsgkp</argument><argument name="size">“LARGE”</argument></grok:render>
-
-<grok:render card_id=“36a04c” card_type=“image_card” type=“render_searched_image”><argument name="image_id">aR7HO</argument><argument name="size">“LARGE”</argument></grok:render>
-
 This system allows me to run large open-source or fine-tuned models **locally and securely**, prototype AI agents, perform rapid experimentation, and build production-ready demos that integrate directly with Cloudera’s AI platform and NVIDIA technologies.
 
-**Pricing**: Approximately **$4,699** (NVIDIA Marketplace / authorized partners; Founders Edition pricing recently adjusted due to memory supply).<grok:render card_id=“e92add” card_type=“citation_card” type=“render_inline_citation”><argument name="citation_id">68</argument></grok:render>
+**Pricing**: Approximately **$4,699** (NVIDIA Marketplace / authorized partners; Founders Edition pricing recently adjusted due to memory supply).
 
 ### Business Benefits & ROI
 
@@ -61,8 +57,7 @@ Cloudera has a strong, ongoing partnership with NVIDIA focused on accelerating e
 - **RAPIDS Accelerator** for Spark workloads.
 - Support for NVIDIA GPUs (including H100-class and newer) in Cloudera environments.
 
-A local DGX Spark lets sales engineers prototype and demo these exact integrations **locally first**, then confidently scale to customer environments.<grok:render card_id=“b85d6d” card_type=“citation_card” type=“render_inline_citation”><argument name="citation_id">0</argument></grok:render>
-
+A local DGX Spark lets sales engineers prototype and demo these exact integrations **locally first**, then confidently scale to customer environments.
 ### Alternatives Considered
 
 |Option                                                        |Pros                                                                       |Cons                                                                                            |Approx. Cost               |Recommendation                    |
@@ -103,9 +98,3 @@ I am happy to provide a live demo of current limitations vs. projected capabilit
 - NVIDIA DGX Spark product page & specs
 - Cloudera NVIDIA partnership overview
 - Relevant NVIDIA/Red Hat blogs on local AI development
-
------
-
-**Copy-paste ready version** (above). You can paste this directly into Google Docs, Word, or email. Add the images from the links or the rendered ones above for visual impact.
-
-This document is professional, data-driven, focused on **business value** (productivity, cost control, revenue enablement, strategic alignment), and addresses your specific pain points while highlighting the perfect-fit DGX Spark. Let me know if you want tweaks, more details on alternatives, or a shorter executive version!
