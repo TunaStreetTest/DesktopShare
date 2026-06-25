@@ -227,6 +227,85 @@ Invoke-WebRequest `
  | Invoke-Expression
 ```
 
+---
+
+## Windows Python Fix — INSTALLPYTHONDIR
+
+### Root Cause
+
+The EFM-generated PowerShell installer (`agent_install_CPP_WINDOWS_0.0.0.ps1`) calls msiexec **without** the `INSTALLPYTHONDIR` property:
+
+```
+msiexec.exe /i minifi.msi AUTOSTART=0 INSTALL_ROOT=$PWD /quiet
+```
+
+The Windows MSI **does** bundle `minifi-python-script-extension.dll` and `minifi_native.pyd` — there is **no separate extra-extensions-windows archive** from Cloudera (unlike Linux where Python extensions are in a separate tar). The DLLs are installed, but without `INSTALLPYTHONDIR` the MiNiFi service cannot find `python3xx.dll` at runtime and Python scripting silently fails.
+
+### Fix (run on Windows as Administrator)
+
+**Step 1 — Find your Python install dir:**
+```powershell
+(Get-Command python).Source
+# e.g. C:\Users\tunas\AppData\Local\Programs\Python\Python312\python.exe
+# INSTALLPYTHONDIR = C:\Users\tunas\AppData\Local\Programs\Python\Python312
+```
+
+**Step 2 — Find where MiNiFi is installed:**
+```powershell
+Get-Service "Apache NiFi MiNiFi" | Select-Object -ExpandProperty BinaryPathName
+# Note the parent directory — that is your INSTALL_ROOT
+```
+
+**Step 3 — Stop the service:**
+```powershell
+Stop-Service "Apache NiFi MiNiFi"
+```
+
+**Step 4 — Reinstall MSI with INSTALLPYTHONDIR:**
+```powershell
+$msiPath     = "C:\Users\tunas\efm-binaries\nifi-minifi-cpp-1.26.02-b30-x64.msi"
+$installRoot = "C:\path\to\existing\install\parent"   # same INSTALL_ROOT used at first install
+$pythonDir   = "C:\Users\tunas\AppData\Local\Programs\Python\Python312"
+
+Start-Process msiexec.exe -ArgumentList `
+  "/i `"$msiPath`" AUTOSTART=0 INSTALL_ROOT=`"$installRoot`" INSTALLPYTHONDIR=`"$pythonDir`" /quiet /L*v msi_repair.log" `
+  -PassThru -Wait
+```
+
+**Step 5 — Verify the Python link was created:**
+```powershell
+# cd to the MiNiFi install dir first
+ls .\extensions\minifi_native.pyd
+ls .\extensions\minifi-python-script-extension.dll
+```
+
+**Step 6 — Start MiNiFi and check logs:**
+```powershell
+Start-Service "Apache NiFi MiNiFi"
+Get-Content ".\logs\minifi-app.log" -Wait
+```
+Look for `minifi-python-script-extension.dll` loaded successfully. No "Failed to load" errors.
+
+### Smoke Test — Minimal Python Flow via EFM
+
+In EFM UI, create a `WindowsDesktop` class flow with:
+1. **ListenHTTP** — port 8080, path `contentListener`
+2. **ExecuteScript** — Script Engine: `python`, Script Body:
+   ```python
+   flow_file = session.get()
+   if flow_file:
+       session.transfer(flow_file, REL_SUCCESS)
+   ```
+3. **LogAttribute**
+
+Push the flow to the agent, then POST to it:
+```powershell
+Invoke-WebRequest -Uri http://localhost:8080/contentListener -Method Post -Body '{"test":"hello from windows"}' -ContentType "application/json"
+```
+Verify `LogAttribute` output appears in `minifi-app.log`.
+
+---
+
 ## Appendix
 
 
