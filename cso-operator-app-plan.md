@@ -215,6 +215,34 @@ For host-side dev (Mac/Windows), the Kafka CR has an additional `external` liste
 
 There is no separate transcript topic — Whisper republishes into `new_documents` so the existing RAG flow handles transcripts unchanged.
 
+### EFM — Cloudera Edge Flow Manager (namespace `cld-streaming`)
+
+EFM v2.3.1.0-2. Service: `efm.cld-streaming.svc:10090` (LoadBalancer, `127.0.0.1:10090` via `minikube tunnel`). No TLS, no auth (`efm.security.user.auth.enabled=false`).
+
+UI: `http://127.0.0.1:10090/efm/ui` — root `/` redirects via nginx Ingress (`efm-ingress.yaml`, `app-root: /efm/ui`). Bookmarked; no Zellij pane needed — `minikube tunnel` handles the stable address.
+
+**EFM REST API quirks (v2.3.1):**
+- `/efm/api` → 404. Health probe must use `/efm/api/agent-classes`.
+- `/efm/api/agents` → 404. No flat agent list endpoint exists.
+- Agent discovery: combine `/efm/api/operations?pageSize=500` (each has `targetAgentId`) + `/efm/api/events?pageSize=200` (filter `eventSource.type == "Agent"`), deduplicate IDs, verify each via `/efm/api/monitor/agents/{id}`.
+- Agent IP: `deviceInfo.networkInfo.ipAddress` in monitor response — pod IP for KubernetesPod, LAN IP for WindowsDesktop, `127.0.0.1` for NvidiaNano (loopback, filtered out; user fills manually).
+
+**Active agent classes:** `KubernetesPod`, `NvidiaNano`, `WindowsDesktop`. All run flows with `ListenHTTP` on `:8080/contentListener`.
+
+**MiNiFi C++ agents and Kafka:**
+- In-cluster agent (`minifi-agent-k8s`, class `KubernetesPod`): uses internal Kafka bootstrap directly.
+- External agents (NvidiaNano Jetson, WindowsDesktop): need Kafka exposed externally. The Strimzi Kafka CR has a NodePort external listener with `advertisedHost: 192.168.1.121` for all brokers. Four stable NodePorts: bootstrap `31623`, brokers `31850`/`31935`/`30336`. Four `kubectl port-forward --address 0.0.0.0` processes expose them from WSL2; Windows Firewall inbound rule allows those ports from LAN. Script: `~/start-kafka-forwards.sh`. Bootstrap for MiNiFi: `192.168.1.121:31623`.
+
+**EFM service YAML (`efm-deployment.yaml`):** originally included a spurious `port: 9092` (`metrics`) which caused `minikube service efm` to create an SSH tunnel on 9092, conflicting with Kafka. Removed. Now only port 10090.
+
+**Backend endpoints added:**
+
+| Endpoint | Action |
+|---|---|
+| `GET /api/efm/agent-classes` | Proxies `/efm/api/agent-classes`, cross-references discovered agents for per-class agent counts |
+| `GET /api/efm/agents` | Discovers agents via operations+events, verifies via monitor, resolves ListenHTTP `endpointUrl` from heartbeat IP |
+| `POST /api/efm/send` | Body `{endpoint_url, payload, content_type}` — POSTs payload to agent's ListenHTTP; returns `{ok, status_code, body_preview}` |
+
 ### NiFi (CFM, namespace `cfm-streaming`)
 
 UI (in-cluster): `https://mynifi-web.mynifi.cfm-streaming.svc.cluster.local/nifi/`
@@ -299,8 +327,9 @@ When CFM ships flow CRs, JSON import is replaced with declarative CRs. Backend i
 - **All Topics** (bottom of page) — live grid of every non-internal topic with partition count and depth, with `new_audio`/`new_documents` highlighted. **Click any tile to peek the last 10 messages** (auto-refreshing every 5s) — used for spot-checking Whisper transcripts landing in `new_documents` without resetting the SSE tail.
 - **Cloudera Operators** — three rows (CSM/Strimzi, CSA/Flink, CFM) showing ready/replicas, image, version, and CRD-presence count. Polls every 15s.
 - **Pods** — namespace-grouped view of `cld-streaming`, `cfm-streaming`, `default` with phase, ready, restarts, age, node, and **rollout-restart / delete-pod** actions per row (5s refresh, inline confirm on delete).
+- **EFM** — three sections: (1) Agent Classes grid with live agent counts per class; (2) Active Agents list with heartbeat staleness dot (green ≤30s, amber ≤5min, red otherwise); (3) Test Agent panel — select agent from dropdown (auto-fills `endpointUrl` from EFM heartbeat IP), editable endpoint field, content-type select, payload textarea, Send button POSTs to agent ListenHTTP, inline result, Kafka peek panel with topic dropdown and auto-refresh after successful send. NvidiaNano agents show no endpoint URL (127.0.0.1 filtered) — user fills manually.
 - **RAG Query** — chat UI with vLLM streaming, expandable source chunks (Qdrant payloads), prompt history.
-- **Health bar** — green/red dots per backing service, click for details.
+- **Health bar** — green/red dots per backing service (vllm, embedding, qdrant, whisper, nifi, kafka, efm), click for details.
 
 State: React hooks. Streaming: `EventSource` for SSE. UI primitives: shadcn Button/Card/Toast/Dialog/Tabs.
 
@@ -312,7 +341,7 @@ cso-operator-app/
 ├── Dockerfile                    # multi-stage: vite frontend → python backend
 ├── backend/
 │   ├── main.py
-│   ├── routers/  (query.py, ingest.py, nifi.py, qdrant.py, kafka.py, health.py)
+│   ├── routers/  (query.py, ingest.py, nifi.py, qdrant.py, kafka.py, health.py, efm.py)
 │   ├── services/ (vllm.py, qdrant.py, embedding.py, whisper.py, nifi.py, kafka.py)
 │   ├── config.py
 │   └── requirements.txt
@@ -417,6 +446,7 @@ All ten phases are done. Kept here for the historical narrative; current behavio
 8. ✅ **Frontend polish** — Demo Mode, health bar with mismatch tooltips, source-chunk reveal, visible SSE error panel.
 9. ✅ **Containerize** + deploy on Mac Minikube. `scripts/` baked into the image so `diagnose-query.py` is one `kubectl exec` away.
 10. ✅ **Test on Windows** Minikube — full path validated; gotchas captured in [`cso-operator-app-windows-test-plan.md`](cso-operator-app-windows-test-plan.md).
+11. ✅ **EFM page** — agent classes, active agents, test agent panel with Kafka peek. EFM v2.3.1 API quirks documented above. External Kafka access for LAN agents via NodePort forwards.
 
 ## CPU variant (Mac, no GPU)
 
