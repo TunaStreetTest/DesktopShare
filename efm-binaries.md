@@ -229,52 +229,92 @@ Invoke-WebRequest `
 
 ---
 
-## Windows Python Fix — INSTALLPYTHONDIR
+## Windows Desktop Agent — Full Install with Python Support
 
-### Root Cause
+> **Key insight:** The EFM deployer script installs MiNiFi without Python extensions by default. Python support is bundled in the MSI but only activated with `ADDLOCAL=ALL`. The clean path is: install via EFM → stop → reinstall with Python → verify → agent appears in EFM.
 
-The EFM-generated PowerShell installer (`agent_install_CPP_WINDOWS_0.0.0.ps1`) calls msiexec **without** the `INSTALLPYTHONDIR` property:
+### Step 1 — Install Agent via EFM Deployer (run as Administrator in PowerShell)
 
-```
-msiexec.exe /i minifi.msi AUTOSTART=0 INSTALL_ROOT=$PWD /quiet
-```
+From EFM UI, generate the Windows install script for your agent class (e.g. `WindowsDesktop`) and run it. This is the EFM-generated command — it installs the base agent but **without Python extensions**:
 
-The Windows MSI **does** bundle `minifi-python-script-extension.dll` and `minifi_native.pyd` — there is **no separate extra-extensions-windows archive** from Cloudera (unlike Linux where Python extensions are in a separate tar). The DLLs are installed, but without `INSTALLPYTHONDIR` the MiNiFi service cannot find `python3xx.dll` at runtime and Python scripting silently fails.
-
-### Critical Lessons
-
-1. `INSTALLPYTHONDIR` alone is **not enough** — the Python script extension is an **optional MSI feature** not selected by default.
-2. You must pass **`ADDLOCAL=ALL`** to force all features (including Python) to install.
-3. The EFM deployer runs from whatever directory PowerShell is open in — it ended up in `C:\WINDOWS\system32` in our lab. The MSI and install stay wherever `$PWD` was at run time.
-
-### Fix (run on Windows as Administrator)
-
-**Step 1 — Find Python:**
 ```powershell
-(Get-Command python).Source
-# Lab result: C:\Python314\python.exe  →  INSTALLPYTHONDIR = C:\Python314
+Set-ExecutionPolicy Bypass -Scope Process -Force;`
+Invoke-WebRequest `
+ -Uri http://127.0.0.1:46663/efm/api/agent-deployer/script `
+ -Method Post `
+ -Body ("agentClass=WindowsDesktop" + `
+       "&agentIdentifier=a66d299f-e7a3-42ea-84cf-3669009e4596" + `
+       "&agentType=cpp" + `
+       "&agentVersion=1.26.02" + `
+       "&autoConfigureSecurity=false" + `
+       "&baseUrl=http%3A%2F%2F127.0.0.1%3A46663%2Fefm%2Fapi" + `
+       "&hbPeriod=5000" + `
+       "&osArch=windows" + `
+       "&serviceName=minifi" + `
+       "&serviceUser=minifi" + `
+       "&trustSelfSignedCertificates=false") `
+ -UseBasicParsing `
+ -ContentType "application/x-www-form-urlencoded" `
+ | Invoke-Expression
 ```
 
-**Step 2 — Stop the service:**
+> The EFM deployer runs from whatever directory PowerShell is open in. In our lab it ran from `C:\WINDOWS\system32` — the MSI and install tree land at `$PWD` (i.e. `C:\WINDOWS\system32\nifi-minifi-cpp\`).
+
+### Step 2 — Stop the Service
+
 ```powershell
 Stop-Service "Apache NiFi MiNiFi"
 ```
 
-**Step 3 — Reinstall MSI with ADDLOCAL=ALL + INSTALLPYTHONDIR:**
+### Step 3 — Find Python and Reinstall MSI with ADDLOCAL=ALL
+
+The MSI **already bundles** `minifi-python-script-extension.dll` and `minifi_native.pyd` — there is no separate Windows extras archive from Cloudera (unlike Linux). You just need to reinstall with all features enabled:
+
 ```powershell
+# Find your Python install path
+(Get-Command python).Source
+# Lab result: C:\Python314\python.exe  →  use C:\Python314
+```
+
+```powershell
+# Reinstall with full feature set + Python dir (adjust paths to match your lab)
 Start-Process msiexec.exe -ArgumentList `
   "/i `"C:\WINDOWS\system32\minifi.msi`" ADDLOCAL=ALL AUTOSTART=0 INSTALL_ROOT=`"C:\WINDOWS\system32`" INSTALLPYTHONDIR=`"C:\Python314`" /quiet /L*v msi_repair.log" `
   -PassThru -Wait
 ```
 
-**Step 4 — Start and verify:**
+### Step 4 — Start the Service
+
 ```powershell
 Start-Service "Apache NiFi MiNiFi"
+```
+
+### Step 5 — Verify Extensions Are Present
+
+```powershell
+# Confirm service binary path and install root
+Get-Service "Apache NiFi MiNiFi" | Select-Object -ExpandProperty BinaryPathName
+
+# Both of these must exist
 ls C:\WINDOWS\system32\nifi-minifi-cpp\extensions\minifi-python-script-extension.dll
+ls C:\WINDOWS\system32\nifi-minifi-cpp\extensions\minifi_native.pyd
+
+# List all extensions (should see both .dll files above)
+ls C:\WINDOWS\system32\nifi-minifi-cpp\extensions\
+
+# Check logs for errors
 Get-Content "C:\WINDOWS\system32\nifi-minifi-cpp\logs\minifi-app.log" -Tail 30
 ```
 
 Agent appears in EFM UI under `WindowsDesktop` class within one heartbeat (~5s).
+
+### Why ADDLOCAL=ALL is Required
+
+The EFM-generated script calls msiexec without it:
+```
+msiexec.exe /i minifi.msi AUTOSTART=0 INSTALL_ROOT=$PWD /quiet
+```
+`INSTALLPYTHONDIR` alone is not enough — the Python script extension is an **optional MSI feature** not selected by default. `ADDLOCAL=ALL` forces every feature including the Python extension to install.
 
 ### Smoke Test — Minimal Python Flow via EFM
 
