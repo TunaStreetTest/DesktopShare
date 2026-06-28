@@ -16,7 +16,7 @@ tags:
   - operator-app
 ---
 
-> **Status:** READY TO BUILD — decisions locked, implementation order below.  
+> **Status:** PHASE 1+2 COMPLETE — scaffold, backend, frontend built and pushed. NiFi flow JSONs (FetchClips, ProcessClips, PublishClip) are next.  
 > Architecture seed: [`files/Streamers.md`](files/Streamers.md)  
 > Companion plan: [`cso-operator-app-plan.md`](cso-operator-app-plan.md)  
 > App repo: `github.com/cldr-steven-matison/cso-operator-app`
