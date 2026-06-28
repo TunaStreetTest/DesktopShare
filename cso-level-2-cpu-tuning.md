@@ -112,6 +112,126 @@ trivial, drop `requests.cpu` and (for Flink) raise `limit-factor`, or (for
 plain Deployments/StatefulSets) just lower the request while leaving the
 limit alone.
 
+## 2026-06-25 — Round 2 sweep (pre-EFM redeploy)
+
+Patched four more Deployments in `cld-streaming`. Same pattern — drop
+`requests.cpu`, leave `limits.cpu` alone:
+
+```bash
+kubectl patch deploy ssb-postgresql            -n cld-streaming --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"250m"}]'
+kubectl patch deploy flink-kubernetes-operator -n cld-streaming --type=json -p='[
+  {"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"250m"},
+  {"op":"replace","path":"/spec/template/spec/containers/1/resources/requests/cpu","value":"100m"}
+]'
+kubectl patch deploy ssb-mve                   -n cld-streaming --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"100m"}]'
+kubectl patch deploy schema-registry           -n cld-streaming --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/resources/requests/cpu","value":"100m"}]'
+```
+
+Net effect on `kubectl describe node`:
+
+| | Before (post-round-1) | After |
+|---|---|---|
+| Node CPU requested | **7800m / 14 (55%)** | **4700m / 14 (33%)** |
+| Headroom recovered | — | **~3 CPU** |
+
+Pods rolled cleanly. `schema-registry` Flyway init-container did a one-shot
+`repair` (a stale failed migration entry, unrelated to the resource change)
+and then came up healthy — no further action.
+
+## ⚠️ Memory is the next bottleneck, not CPU
+
+After this round, the **scheduler** had plenty of room — but the **VM**
+didn't. Deploying `efm-deployment-persisted.yaml` (Guaranteed QoS
+`requests=limits=4Gi`) wedged the minikube docker container at
+`827% CPU / 23.97 GiB / 24 GiB` and made the API server return
+`TLS handshake timeout` for several minutes.
+
+Why this is different from the CPU story:
+
+- `kubectl describe node` showed **only ~64% memory _requests_** — that's
+  the scheduling number. The kubelet was happy to schedule EFM.
+- But the existing **memory _limits_** sum to **109% of node memory**
+  (overcommitted, by design). Most pods sit well under their limits,
+  which is the only reason the VM works at all.
+- EFM is a JVM that genuinely _uses_ a few GB on startup. Adding it
+  pushed real RSS past what the host VM has, the kernel started thrashing,
+  and the control plane (etcd / apiserver / kubelet) was starved along
+  with everything else.
+
+So the level-2 trick — "raise limit-factor, lower request" — **does not
+work for memory**. There's no `kubernetes.*.memory.limit-factor` analog
+for plain Deployments, and even for Flink, raising the memory limit-factor
+just makes the VM crash _harder_ when something actually allocates.
+
+**The real fix is to bring memory _requests AND limits_ down on the JVM
+pods that habitually run with <30% of their `-Xmx`.**
+
+### Top memory-requesting pods to inspect
+
+Run this to get the current snapshot:
+
+```bash
+kubectl get pods -A -o json | python3 -c '
+import json,sys
+d=json.load(sys.stdin)
+rows=[]
+for p in d["items"]:
+    if p["status"].get("phase")!="Running": continue
+    for c in p["spec"]["containers"]:
+        m=c.get("resources",{}).get("requests",{}).get("memory","")
+        if not m: continue
+        # crude Gi normalization
+        n=int(m[:-2]) if m.endswith("Gi") else int(m[:-2])//1024 if m.endswith("Mi") else 0
+        if n>=1:
+            rows.append((n,p["metadata"]["namespace"],p["metadata"]["name"],c["name"],m))
+rows.sort(reverse=True)
+for r in rows[:20]: print(f"{r[0]:>3}Gi  {r[1]:18} {r[2]:50} {r[3]:25} {r[4]}")'
+```
+
+Likely candidates on this cluster: `efm` (4Gi), `whisper-cpu-server`,
+`vllm-cpu-server`, `embedding-server-cpu`, `ssb-session-admin-*`,
+`nifi-*` (when running), and `prometheus-prometheus-*`. For each, compare
+to `kubectl top pod` real usage:
+
+- If `top` shows <30% of `requests.memory`: lower **both** request and
+  limit. JVMs need `-Xmx` lowered too (e.g. add `JAVA_OPTS=-Xmx2g`) or
+  they'll just allocate up to whatever heap was sized at startup.
+- If `top` shows >70% of `requests.memory`: leave it. That pod is using
+  what it asked for.
+
+### Specifically for EFM
+
+The committed YAML (`/Users/steven.matison/Documents/GitHub/ClouderaStreamingOperators/efm-deployment-persisted.yaml`)
+ships with `requests: {cpu: 250m, memory: 4Gi}`, `limits: {cpu: 250m,
+memory: 4Gi}`. After a normal boot, real EFM memory usage is ~1.2–1.8 Gi
+on this workload. Recommended sizing once we have time to patch the YAML:
+
+```yaml
+resources:
+  requests:
+    cpu: "250m"
+    memory: "1Gi"        # was 4Gi
+  limits:
+    cpu: "1"             # was 250m — let it burst on startup
+    memory: "3Gi"        # was 4Gi
+env:
+  - name: JAVA_OPTS
+    value: "-Xmx2g -Dspring.datasource.driver-class-name=org.postgresql.Driver -Def.db.driver.class.name=org.postgresql.Driver"
+```
+
+That moves EFM from Guaranteed QoS to Burstable, gives it CPU headroom for
+the Spring boot window, and caps the JVM heap at 2G so it can't quietly
+grow past the limit.
+
+### How to recover when the VM does wedge
+
+1. `docker stop minikube` (graceful — etcd flushes).
+2. `minikube start` (DON'T `minikube delete` — preserves PVs and etcd).
+3. Cluster comes back with everything still in place.
+
+The 98-day uptime caveat (top of this doc) does NOT apply to a docker
+stop/start of the minikube container — only to `minikube delete`.
+
 ## Caveats
 
 - Editing a `FlinkDeployment` restarts the JM and bounces session jobs (brief outage; jobs restart from latest checkpoint / savepoint). Plan around active demos.
