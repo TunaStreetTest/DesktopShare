@@ -16,7 +16,7 @@ tags:
   - operator-app
 ---
 
-> **Status:** PHASE 1–6 COMPLETE — full pipeline built. NiFi flows deploy via `scripts/setup-streamers-flows.py` (calls backend endpoints for Twitch/Whisper/vLLM). Kafka topics `new_clips` + `processed_clips` applied. PVC `clips-storage` (20Gi) applied. App image rebuilding with `MODULES=streamers`.  
+> **Status:** COMPLETE AND WORKING — full pipeline end-to-end verified. Twitch clips download → Whisper transcription → vLLM emoji caption → review UI → X publish live on @TunaStreetTest. Dismiss-on-publish UX implemented (card vanishes after 1.2s flash). X API running pay-per-use (added credits). NiFi flows committed as `streamers/StreamersApp.json`.  
 > Architecture seed: [`files/Streamers.md`](files/Streamers.md)  
 > Companion plan: [`cso-operator-app-plan.md`](cso-operator-app-plan.md)  
 > App repo: `github.com/cldr-steven-matison/cso-operator-app`
@@ -273,6 +273,29 @@ Each phase ends with commit + push to both `cso-operator-app` and `DesktopShare`
 
 ---
 
+## What Was Actually Built (vs Plan)
+
+The NiFi flows turned out simpler than the original design. Rather than NiFi doing the Twitch API calls and file downloads directly, the actual implementation uses:
+
+- **FetchClips**: GenerateFlowFile (15 min timer) → InvokeHTTP `POST /api/streamers/fetch-clips` (all Twitch GQL + download logic in Python)
+- **ProcessClips**: ConsumeKafka_2_6 ← new_clips → InvokeHTTP `POST /api/streamers/process-clip` → PublishKafka_2_6 → processed_clips
+- **PublishClip**: HandleHttpRequest (9001) → InvokeHTTP → HandleHttpResponse
+
+The backend service (`backend/services/streamers.py`) does all the heavy lifting: Twitch GQL for signed CloudFront URLs, aiokafka manual partition assignment, Whisper + vLLM calls, tweepy OAuth1 + chunked media upload + v2 create_tweet.
+
+## Key Technical Lessons
+
+| Issue | Fix |
+|---|---|
+| Twitch CDN changed in 2024 — thumbnail→.mp4 trick dead | Use GQL `VideoAccessToken_Clip` query → `sourceURL?sig=&token=` |
+| aiokafka hangs after manual `seek()` with `async for` | Use `getmany(tp, timeout_ms=5000)` one-shot fetch |
+| Strimzi created 1 partition despite spec saying 3 | Hardcode `TopicPartition(topic, 0)` |
+| X API v1.1 `update_status` retired | tweepy v2 `create_tweet` + v1 `media_upload(chunked=True)` |
+| X API 402 "no credits" | Pay-per-use billing — add credits at developer.x.com |
+| `vite-env.d.ts` caught by `.gitignore` | Add `!frontend/src/vite-env.d.ts` negation |
+
 ## What's Next
 
-Start Phase 1 — scaffold `streamers/` directory, `build-modules.py`, and Makefile wiring. Then fan out: Phase 2a (backend) + 2b (Dockerfile/Vite) in parallel, Phase 5a (frontend) + 5b (backend endpoints) in parallel. Commit+push after every phase.
+- **Publish history tab** — persist published clip metadata to a JSON file on PVC so history survives page refresh
+- **Kick support** — credentials set, API integration not yet implemented in `fetch_clips`
+- **Auto-publish mode** — bypass review UI and post top clips automatically on a schedule
