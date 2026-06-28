@@ -16,7 +16,7 @@ tags:
   - operator-app
 ---
 
-> **Status:** PHASE 1+2 COMPLETE — scaffold, backend, frontend built and pushed. NiFi flow JSONs (FetchClips, ProcessClips, PublishClip) are next.  
+> **Status:** PHASE 1–6 COMPLETE — full pipeline built. NiFi flows deploy via `scripts/setup-streamers-flows.py` (calls backend endpoints for Twitch/Whisper/vLLM). Kafka topics `new_clips` + `processed_clips` applied. PVC `clips-storage` (20Gi) applied. App image rebuilding with `MODULES=streamers`.  
 > Architecture seed: [`files/Streamers.md`](files/Streamers.md)  
 > Companion plan: [`cso-operator-app-plan.md`](cso-operator-app-plan.md)  
 > App repo: `github.com/cldr-steven-matison/cso-operator-app`
