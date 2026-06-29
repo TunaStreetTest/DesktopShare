@@ -1,0 +1,216 @@
+# Agent-to-Agent — OpenClaw ↔ Claude Code via Telegram
+
+A plan for using the OpenClaw Telegram bot to invoke Claude Code against DesktopShare (and related repos) while away from the desktop. The goal is human-in-the-loop remote planning and analysis — not autonomous operation.
+
+> **Status:** Planning. OpenClaw is live on Windows WSL2 with Qwen2.5-3B and `/bash` unlocked. Claude Code is installed in WSL2. DesktopShare is at `~/DesktopShare`.
+> See: [`agent-openclaw-windows.md`](agent-openclaw-windows.md) for OpenClaw setup reference.
+
+---
+
+## The Core Idea
+
+OpenClaw handles the Telegram channel. Claude Code handles the thinking and repo work. The bridge is `/bash`:
+
+```
+Phone → Telegram → OpenClaw /bash → claude -p "prompt" → stdout → Telegram reply
+```
+
+Claude Code's `--print` (`-p`) flag is the key — it accepts a prompt, runs it non-interactively with full tool access against the working directory, prints the result to stdout, and exits. That stdout is exactly what comes back to Telegram.
+
+---
+
+## Safety Boundaries
+
+### What's safe remotely
+- Planning, analysis, summarization — read-only work against DesktopShare docs
+- Drafting new plan sections or blog post outlines
+- Reviewing repo state and suggesting next steps
+- Asking Claude to read files and report back
+
+### What's risky without you at the keyboard
+- Any `kubectl` against a live cluster
+- Git pushes (could commit bad state)
+- Writing or editing files autonomously over multiple steps
+- Anything involving live API credentials (X, Twitch)
+
+### Rule of thumb
+Keep the cluster and app flows stopped while away. Then the worst Claude can do remotely is write a markdown file. That's recoverable.
+
+---
+
+## Basic Invocation
+
+**Single prompt, no session carry-over:**
+```
+/bash cd ~/DesktopShare && claude -p "what's in this repo and what are the active plans?"
+```
+
+**Chain prompts across a session (`--continue` resumes the last session for that directory):**
+```
+/bash cd ~/DesktopShare && claude --continue -p "now look at cso-operator-app-plan.md and suggest what session 5 should cover"
+```
+
+**Read a specific file and analyze:**
+```
+/bash cd ~/DesktopShare && claude -p "read cso-operator-app-streamers.md and summarize what's done and what's next"
+```
+
+**Limit tools to read-only (safer for remote use):**
+```
+/bash cd ~/DesktopShare && claude --allowedTools Read,Bash -p "review all plan files and give me a status summary"
+```
+
+---
+
+## Wrapper Script
+
+Save as `~/claw-claude.sh` for cleaner Telegram commands:
+
+```bash
+#!/bin/bash
+# Usage: ~/claw-claude.sh your prompt here
+cd ~/DesktopShare
+claude --continue -p "$*"
+```
+
+```bash
+chmod +x ~/claw-claude.sh
+```
+
+Then from Telegram:
+```
+/bash ~/claw-claude.sh what files need updating based on the session 4 work?
+```
+
+---
+
+## Pre-Baked Prompt Scripts
+
+For tasks you'll want repeatedly, bake the prompt into a script so Telegram commands stay short.
+
+**`~/ds-status.sh` — repo status check:**
+```bash
+#!/bin/bash
+cd ~/DesktopShare
+claude -p "read MEMORY.md and all plan files in this repo. Give me: (1) current state of each active project, (2) top 3 things to work on next, (3) anything that looks stale or needs updating. Keep it under 60 lines."
+```
+
+**`~/ds-blog-ideas.sh` — next blog post candidates:**
+```bash
+#!/bin/bash
+cd ~/DesktopShare
+claude -p "look at the completed/ folder, the blog/ folder, and the active plan files. Suggest 3 blog post ideas that would follow naturally from work already done. One paragraph each."
+```
+
+**`~/ds-plan.sh` — draft a plan for a topic passed as argument:**
+```bash
+#!/bin/bash
+# Usage: ~/ds-plan.sh argocd integration for streamers
+cd ~/DesktopShare
+claude -p "draft a plan section for: $*. Use the style and format of cso-operator-app-plan.md. Keep it under 40 lines."
+```
+
+Invoke from Telegram:
+```
+/bash ~/ds-status.sh
+/bash ~/ds-blog-ideas.sh
+/bash ~/ds-plan.sh auto-publish mode for the streamers pipeline
+```
+
+---
+
+## Output Management
+
+Telegram truncates messages at ~4096 characters. Long Claude responses will be cut off.
+
+**Ask Claude to be brief:**
+```
+/bash cd ~/DesktopShare && claude -p "summarize cso-operator-app-streamers.md in under 30 lines"
+```
+
+**Pipe through head as a hard cap:**
+```
+/bash cd ~/DesktopShare && claude -p "your prompt" | head -80
+```
+
+**Write output to a file, then read the first chunk:**
+```
+/bash cd ~/DesktopShare && claude -p "your prompt" > /tmp/claude-out.txt && head -100 /tmp/claude-out.txt
+```
+Follow up to read more:
+```
+/bash tail -n +101 /tmp/claude-out.txt | head -100
+```
+
+---
+
+## Session Continuity Pattern
+
+`--continue` resumes the most recent Claude Code session for that working directory. This lets you build up context across multiple Telegram messages — like an interactive session but one prompt at a time.
+
+```
+# Message 1
+/bash ~/claw-claude.sh read all the plan files and tell me what you see
+
+# Message 2 (continues same session — Claude still has context)
+/bash ~/claw-claude.sh now focus on the streamers next steps. what would you prioritize?
+
+# Message 3
+/bash ~/claw-claude.sh draft that as a new section for cso-operator-app-streamers.md
+```
+
+Start a fresh session (drop `--continue`) when you want Claude to approach something cold.
+
+---
+
+## Other Ideas
+
+### OpenClaw Qwen as a router
+Qwen is already running locally. Instead of manually crafting `/bash` commands, ask OpenClaw (Qwen) to compose and run the right `claude -p` call for you. Qwen acts as the intent-to-command translator; Claude does the heavy analysis.
+
+Example chat to OpenClaw:
+> "Run claude against DesktopShare and ask it to summarize the active plans"
+
+OpenClaw (Qwen) generates and runs the `/bash` command, Claude does the work.
+
+### Claude writes a plan file, you review via Telegram
+```
+/bash cd ~/DesktopShare && claude -p "draft a new plan for Kick API integration into the streamers module. Write it to kick-integration-plan.md" && cat kick-integration-plan.md | head -80
+```
+The file lands in the repo. You review it in Telegram. Edit or commit it when you're back at the desk.
+
+### Pipe DesktopShare context into Claude API directly (no tool use)
+For lightweight questions that don't need file browsing, pipe content directly:
+```
+/bash cat ~/DesktopShare/cso-operator-app-streamers.md | claude -p "based on this, what should session 5 cover?"
+```
+
+### GitHub as the handoff layer
+Have Claude write new plan sections or blog drafts and commit them to a branch. You review the diff on GitHub from your phone. No cluster, no credentials, no risk — just markdown in a PR.
+
+```
+/bash cd ~/DesktopShare && claude -p "draft session 5 plan for streamers, append it to cso-operator-app-streamers.md" && git diff
+```
+
+---
+
+## What Doesn't Work Well Remotely
+
+| Pattern | Problem |
+|---|---|
+| Multi-step autonomous task ("build and deploy X") | No one watching; mistakes compound |
+| Anything touching kubectl on a live cluster | Pod restarts, rollouts with no oversight |
+| Long interactive sessions | Telegram message limits; context gets unwieldy |
+| Autonomous git push | Could push broken state |
+| Asking Qwen to drive Claude autonomously | Qwen 3B is not reliable enough to supervise Claude safely |
+
+---
+
+## Setup Checklist
+
+Before leaving the desk:
+- [ ] Test `~/claw-claude.sh hello` returns output in Telegram
+- [ ] Test `--continue` chains correctly across two messages
+- [ ] Save `~/ds-status.sh` and test it end-to-end
+- [ ] Confirm app flows are stopped, cluster workloads are idle
+- [ ] Verify no live credentials needed for read-only DesktopShare work
