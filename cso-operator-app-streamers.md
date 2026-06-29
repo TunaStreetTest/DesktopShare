@@ -373,3 +373,27 @@ kubectl scale deploy ssb-sse         -n cld-streaming --replicas=1
 kubectl scale deploy schema-registry -n cld-streaming --replicas=1
 kubectl apply -f ~/ClouderaStreamingOperators/minifi-agent-pod.yaml
 ```
+
+### Deploy reference (full install)
+
+```bash
+cd ~/cso-operator-app
+make deploy MODULES=efm,rag,streamers
+```
+
+After any deploy that resets credentials (e.g. first deploy on a new machine):
+```bash
+source ~/.env
+kubectl set env deploy/cso-operator-app \
+  NIFI_USERNAME=admin \
+  NIFI_PASSWORD="${NIFI_ADMIN_PASS}" \
+  TWITCH_CLIENT_ID="${TWITCH_CLIENT_ID}" \
+  TWITCH_CLIENT_SECRET="${TWITCH_CLIENT_SECRET}" \
+  KICK_CLIENT_ID="${KICK_CLIENT_ID}" \
+  KICK_CLIENT_SECRET="${KICK_CLIENT_SECRET}" \
+  X_API_KEY="${X_API_KEY}" \
+  X_API_SECRET="${X_API_SECRET}" \
+  X_ACCESS_TOKEN="${X_ACCESS_TOKEN}" \
+  X_ACCESS_TOKEN_SECRET="${X_ACCESS_TOKEN_SECRET}" \
+  STREAMERS_WATCH_LIST="stableronaldo"
+```
