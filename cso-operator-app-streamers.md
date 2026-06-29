@@ -16,7 +16,7 @@ tags:
   - operator-app
 ---
 
-> **Status:** WORKING — pipeline live, publishing to @TunaStreetTest. Known issues: Whisper transcription times out NiFi InvokeHTTP on 45-60s clips (processing architecture needs refactor to NiFi-native processors). Skip/publish state not persisted across page refresh. Both queued for next session.  
+> **Status:** WORKING — pipeline live, publishing to @TunaStreetTest. Skip/publish state now persisted to PVC. Video playback embedded in review queue. Performance optimized (NiFi group ID cache, parallel Kafka consumers, 30s poll, page-visibility pausing). Known issue: Whisper transcription times out NiFi InvokeHTTP on 45-60s clips (processing architecture needs refactor to NiFi-native processors).  
 > Architecture seed: [`files/Streamers.md`](files/Streamers.md)  
 > Companion plan: [`cso-operator-app-plan.md`](cso-operator-app-plan.md)  
 > App repo: `github.com/cldr-steven-matison/cso-operator-app`
@@ -299,11 +299,10 @@ The backend service (`backend/services/streamers.py`) does all the heavy lifting
 ### High Priority (next session)
 
 - **ProcessClips refactor** — move Whisper + vLLM out of the Python backend into NiFi-native InvokeHTTP processors. Current architecture routes everything through the app backend which blocks NiFi's InvokeHTTP and causes timeouts on 45-60s clips. Existing RAG NiFi flows already do Whisper + vLLM — reuse that pattern.
-- **Skip/publish persistence** — write to `/clips/.published.json` and `/clips/.skipped.json` on the PVC (same pattern as `.seen_clips.json`). Load on startup to restore dismissed state across pod restarts and page refreshes. Enables a History tab.
 
 ### Later
 
-- **Publish history tab** — show past published clips with tweet URLs, timestamps, and captions
+- **Publish history tab** — show past published clips with tweet URLs, timestamps, and captions (`.published.json` already written, just needs a UI)
 - **Kick support** — credentials set (`KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`), API integration not yet implemented in `fetch_clips`
 - **Auto-publish mode** — bypass review UI and post top clips automatically on a schedule
 - **Streamer X handle mapping** — watchlist enhancement to store each streamer's X handle alongside Twitch login for credit tagging in tweets
@@ -322,3 +321,55 @@ Beyond the initial scaffold, this session added:
 | File-exists gate | Review queue only surfaces clips whose MP4 is on disk — no partial/stale cards |
 | 404 on missing file | Publish endpoint returns actionable 404 instead of opaque 502 when file is gone |
 | RBAC | Added `kafkatopics get/list/delete` to `cso-operator-app-writer` role in `cld-streaming` namespace |
+
+## Session 3 Additions (2026-06-29)
+
+### Performance fixes
+
+| Change | Details |
+|---|---|
+| NiFi group ID cache | `_resolve_streamer_groups` BFS result cached 5 min — was running on every `/flows` poll (12×/min) |
+| Parallel Kafka consumers | `topic_stats` runs both consumers concurrently via `asyncio.gather` — halves wall time (~20s → ~10s) |
+| topic_stats result cache | 30s TTL — repeated Refresh clicks don't spin new consumers |
+| Flow poll 5s → 30s | Frontend poll interval reduced 6× |
+| Topics not auto-loaded | Kafka consumer lifecycle now only triggered by manual Refresh button |
+| Page-visibility pause | Poll stops when browser tab is hidden, resumes immediately when tab regains focus |
+| Lazy thumbnails | `loading="lazy"` on clip thumbnail images |
+
+### Feature additions
+
+| Feature | Details |
+|---|---|
+| Skip persistence | Skip button calls `POST /api/streamers/skip` → writes clip_id to `/clips/.skipped.json`; skipped clips filtered from queue on next load |
+| Publish persistence | `publish_clip` writes clip_id to `/clips/.published.json` on successful tweet; published clips filtered from queue |
+| Reset clears skip+publish | `Reset Kafka` button now also wipes `.skipped.json` and `.published.json` |
+| Video player in review | `<video controls preload="none">` in each ClipCard served via `GET /api/streamers/clip/{clip_id}` — `preload="none"` prevents simultaneous buffering of all queued clips |
+| Clips per run reduced | 3 per streamer → 2 per streamer — fewer downloads, less Whisper load per cycle |
+
+### Idle service scale-down (kubectl)
+
+To free CPU/memory on the cluster while not using EFM, MiNiFi, SSB, or Schema Registry:
+
+```bash
+# Scale down — run these yourself; bring back up with --replicas=1 when needed
+kubectl scale deploy efm             -n cld-streaming --replicas=0
+kubectl scale deploy ssb-mve         -n cld-streaming --replicas=0
+kubectl scale deploy ssb-sse         -n cld-streaming --replicas=0
+kubectl scale deploy schema-registry -n cld-streaming --replicas=0
+
+# MiNiFi is a bare Pod — delete it (re-create from ClouderaStreamingOperators/minifi-agent-pod.yaml)
+kubectl delete pod minifi-agent-k8s -n cld-streaming
+
+# Keep these running:
+# ssb-postgresql  — EFM + Schema Registry store config here; needed to restore them cleanly
+# All CSO Operator App services, NiFi, Kafka, Whisper, vLLM, Qdrant
+```
+
+To restore:
+```bash
+kubectl scale deploy efm             -n cld-streaming --replicas=1
+kubectl scale deploy ssb-mve         -n cld-streaming --replicas=1
+kubectl scale deploy ssb-sse         -n cld-streaming --replicas=1
+kubectl scale deploy schema-registry -n cld-streaming --replicas=1
+kubectl apply -f ~/ClouderaStreamingOperators/minifi-agent-pod.yaml
+```
