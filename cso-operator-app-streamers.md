@@ -322,6 +322,15 @@ Beyond the initial scaffold, this session added:
 | 404 on missing file | Publish endpoint returns actionable 404 instead of opaque 502 when file is gone |
 | RBAC | Added `kafkatopics get/list/delete` to `cso-operator-app-writer` role in `cld-streaming` namespace |
 
+## Session 4 Additions (2026-06-29)
+
+| Change | Details |
+|---|---|
+| Clips per streamer 2 → 5 | `fetch_clips` cap raised from 2 to 5 per streamer — fetch pool is already 20 clips (≥45s, longest-first) |
+| Deploy without EFM tab | Pass `MODULES=rag,streamers` to omit EFM — e.g. `make deploy MODULES=rag,streamers` |
+
+---
+
 ## Session 3 Additions (2026-06-29)
 
 ### Performance fixes
