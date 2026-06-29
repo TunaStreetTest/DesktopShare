@@ -1,6 +1,6 @@
 ---
 layout: single
-title: "Streamers — Twitch/Kick Clip Pipeline Module for the CSO Operator App"
+title: "Streamers — Twitch Clip Pipeline Module for the CSO Operator App"
 date: 2026-06-28
 classes: wide
 categories:
@@ -16,391 +16,98 @@ tags:
   - operator-app
 ---
 
-> **Status:** WORKING — pipeline live, publishing to @TunaStreetTest. Skip/publish state now persisted to PVC. Video playback embedded in review queue. Performance optimized (NiFi group ID cache, parallel Kafka consumers, 30s poll, page-visibility pausing). Whisper tuned for speed: beam_size=1, chunk_length_s=60, async GPU queue with Semaphore. ProcessClips runs 3 concurrent NiFi tasks.  
-> Architecture seed: [`files/Streamers.md`](files/Streamers.md)  
-> Companion plan: [`cso-operator-app-plan.md`](cso-operator-app-plan.md)  
+> **Status:** WORKING — pipeline live, publishing to @TunaStreetTest.
 > App repo: `github.com/cldr-steven-matison/cso-operator-app`
+> Companion plan: [`cso-operator-app-plan.md`](cso-operator-app-plan.md)
 
 ---
 
-## What We Are Building
+## What It Does
 
-The **Streamers module** adds a fully automated clip curation pipeline to the CSO Operator App. It watches Twitch (and optionally Kick) for top clips from a configured list of streamers, runs them through the existing AI stack (Whisper for transcription, vLLM for commentary generation), queues them in a review UI, and publishes approved clips to X (@TunaStreetTest) with original commentary.
+The **Streamers module** watches Twitch for top clips from a configured watch list, transcribes them with Whisper, generates a caption with vLLM, queues them in a review UI, and publishes approved clips to X (@TunaStreetTest) with original commentary.
 
-This is a new optional module — installable by build argument — that layers on top of the existing RAG + Whisper infrastructure without touching it.
+Optional module — enabled at build/deploy time via `MODULES=streamers`. Layers on top of the existing Whisper + vLLM stack with no changes to those services.
 
 ---
 
-## Pipeline Overview
+## Pipeline
 
 ```
-Twitch/Kick APIs
+Twitch API (GQL)
       │
       ▼
-NiFi: FetchClips (Flow 1)
-  GetTopStreamers → GetClips → DownloadClip → metadata JSON
+FetchClips NiFi flow
+  GenerateFlowFile (15 min) → InvokeHTTP POST /api/streamers/fetch-clips
+  Backend: Twitch OAuth → GQL VideoAccessToken_Clip → download MP4 → /clips/<id>.mp4
+  → PublishKafka → new_clips
       │
       ▼
-Kafka: new_clips
+ProcessClips NiFi flow
+  ConsumeKafka ← new_clips → InvokeHTTP POST /api/streamers/process-clip
+  Backend: POST whisper-service:8001/transcribe → POST vllm-service:8000/v1/chat/completions
+  → PublishKafka → processed_clips
       │
       ▼
-NiFi: ProcessClips (Flow 2)
-  Transcribe (→ whisper-service:8001) + Caption (→ vllm-service:8000) + FFmpeg trim
+Streamers Page — Review UI
+  Watch clip · Edit caption · Add commentary · Approve → POST /api/streamers/publish
       │
       ▼
-Kafka: processed_clips
-      │
-      ▼
-CSO Operator App: Streamers Page (Review UI)
-  Watch clip → Edit caption → Add commentary → Approve
-      │
-      ▼
-NiFi: PublishClip (Flow 3)
-  HandleHttpRequest → X Media Upload → X Tweet Create
+X API: tweepy v1 media_upload (chunked) + v2 create_tweet
 ```
 
-All three NiFi flows live under a new `StreamersApp` parent process group — separate from the existing `CSOOperatorApp` PG so neither breaks the other.
+All NiFi flows live under a `StreamersApp` parent PG — separate from `CSOOperatorApp`.
 
 ---
 
-## How It Fits into the Existing Stack
+## Existing Services Used
 
-The Streamers module reuses what is already running. No new AI services are needed:
-
-| Existing Service | Streamers Use |
+| Service | Use |
 |---|---|
-| `whisper-service:8001` | Transcribe clip audio (`/transcribe` endpoint) |
-| `vllm-service:8000` | Generate short commentary / hot-take caption |
-| Kafka (CSM / Strimzi) | Two new topics: `new_clips`, `processed_clips` |
-| NiFi (CFM) | Three new process groups under `StreamersApp` PG |
-| Qdrant | Optional: index transcripts into `my-rag-collection` so the RAG Query tab can answer questions about past clips |
+| `whisper-service:8001` | `POST /transcribe` — multipart MP4 → `{"text": "..."}` |
+| `vllm-service:8000` | `POST /v1/chat/completions` — transcript → caption |
+| Kafka (Strimzi) | `new_clips`, `processed_clips` topics (1 partition each) |
+| NiFi (CFM) | 3 process groups under `StreamersApp` PG |
 
-What IS new:
-- Twitch API credentials (Client ID + Secret) in a Kubernetes Secret
-- Optional X API credentials for publishing
-- A PVC for clip video file storage (reuse existing PVC patterns from `ClouderaStreamingOperators/`)
-- New `streamers/` directory in the app repo with flow JSONs + config
+New per this module:
+- Twitch + X API credentials injected via `kubectl set env` (never in YAML)
+- PVC at `/clips` for MP4 storage — `streamers/pvc.yaml`
+- Kafka topics — `streamers/kafka-topics.yaml`
 
 ---
 
-## Build Argument: Making Streamers Optional
+## Module System
 
-The Streamers module is off by default. It is enabled at build time:
-
-```bash
-# Build with Streamers module included
-make build MODULES=streamers
-
-# Or via Docker directly
-docker build --build-arg MODULES=streamers -t cso-operator-app:latest .
-
-# Build with Streamers + GPU stack
-make build STACK=gpu MODULES=streamers
-
-# Full bootstrap (deploys Kafka topics + imports NiFi flows)
-make bootstrap MODULES=streamers
-```
-
-**How the flag works:**
+`MODULES` is a build-time flag that controls which optional tabs are active. `build-modules.py` only recognizes `streamers` as a known module; `efm` and `rag` are handled purely at the frontend/backend level via the same env var.
 
 ```
 Dockerfile ARG MODULES=''
-  → scripts/build-modules.py reads MODULES
-  → copies streamers/ into image if "streamers" in list
-  → writes modules.json manifest
-  → VITE_MODULES=streamers baked into React bundle
-
-Backend reads modules.json at startup:
-  → registers /api/streamers/* routes only if streamers is enabled
-  → skips otherwise (routes simply don't exist)
-
-Frontend reads VITE_MODULES:
-  → renders Streamers nav tab only if enabled
+  → VITE_MODULES baked into React bundle → shows/hides nav tabs
+  → ENV MODULES in backend image → registers /api/streamers/* routes only if "streamers" present
 ```
 
-ConfigMap gets new keys when the module is enabled:
+**Frontend** (`App.tsx`): tabs for `efm`, `rag`, `streamers` only render if their name appears in `VITE_MODULES`.
 
-```yaml
-TWITCH_CLIENT_ID: "<from secret>"
-TWITCH_CLIENT_SECRET: "<from secret>"
-X_BEARER_TOKEN: "<from secret>"
-STREAMERS_WATCH_LIST: "xQc,Nickmercs,summit1g"   # comma-separated Twitch logins
-CLIP_STORAGE_PATH: "/clips"                        # mounted PVC path
-NEW_CLIPS_TOPIC: "new_clips"
-PROCESSED_CLIPS_TOPIC: "processed_clips"
-```
+**Backend** (`main.py`): `efm` router is always included. `streamers` router is conditionally registered. `rag` panels use always-present routers (query, ingest, nifi, qdrant, kafka).
 
----
-
-## App: Streamers Page
-
-New tab in the CSO Operator App nav. Three sections:
-
-### Section 1 — Pipeline Status
-
-Shows the three NiFi flows for this module with start/stop controls (same pattern as existing NiFi Controls):
-
-| Flow | Status | Action |
-|---|---|---|
-| FetchClips | RUNNING | Stop |
-| ProcessClips | RUNNING | Stop |
-| PublishClip | STOPPED | Start |
-
-Live Kafka depth for `new_clips` and `processed_clips` — same depth/lag widget already used by the Kafka Activity panel.
-
-### Section 2 — Clip Review Queue
-
-Reads from `processed_clips` topic (or a lightweight SQLite/PVC-backed queue if Kafka retention isn't long enough for review lag).
-
-Each card in the queue shows:
-- Clip thumbnail (extracted frame via FFmpeg)
-- Streamer name + clip title + duration
-- Whisper transcript (collapsible)
-- vLLM-generated caption (editable text field)
-- "Add my commentary" text field
-- **Approve → Publish** button (triggers NiFi `PublishClip` via `POST /api/streamers/publish`)
-- **Skip** button (marks processed, removes from queue)
-
-### Section 3 — Watch List Config
-
-Simple table to add/remove Twitch logins from `STREAMERS_WATCH_LIST`. Changes write back to the ConfigMap. Restart not required — the NiFi `FetchClips` flow reads the list from a flow attribute via `GenerateFlowFile` + `ReplaceText` pattern.
-
----
-
-## NiFi Flows (Three New Process Groups)
-
-All three live inside a parent PG named `StreamersApp` — importable as `streamers/StreamersApp.json`.
-
-### Flow 1: FetchClips
-
-```
-GenerateFlowFile (scheduled: 15 min)
-  → InvokeHTTP (Twitch OAuth token refresh)
-  → SplitText (one line per streamer login)
-  → InvokeHTTP GET /clips?broadcaster_id=...&first=5
-  → EvaluateJsonPath (extract clip id, title, url, thumbnail_url)
-  → RouteOnAttribute (skip clip_ids already seen — DistributedMapCache dedupe)
-  → InvokeHTTP (download MP4 → PutFile to /clips/<id>.mp4)
-  → ReplaceText (build metadata JSON)
-  → PublishKafka_2_6 → new_clips
-```
-
-Rate limit: `ControlRate` processor caps to 50 calls/min — well under Twitch's 800-point budget.
-
-### Flow 2: ProcessClips
-
-```
-ConsumeKafka_2_6 ← new_clips
-  → InvokeHTTP POST whisper-service:8001/transcribe (multipart file=@/clips/<id>.mp4)
-  → EvaluateJsonPath $.text → transcript attribute
-  → InvokeHTTP POST vllm-service:8000/v1/chat/completions
-      (prompt: "Write a short witty hot-take about this clip: {transcript}")
-  → EvaluateJsonPath $.choices[0].message.content → caption attribute
-  → MergeContent (combine original metadata + transcript + caption → enriched JSON)
-  → PublishKafka_2_6 → processed_clips
-```
-
-FFmpeg trim (phase 2): `ExecuteStreamCommand` after Whisper to cut to highlight segment based on transcript timestamps.
-
-### Flow 3: PublishClip
-
-```
-HandleHttpRequest (triggered by Approve button → POST /contentListener)
-  → EvaluateJsonPath (clip path, tweet text from request body)
-  → InvokeHTTP POST api.twitter.com/2/media/upload (chunked, multipart)
-  → EvaluateJsonPath $.media_id_string
-  → InvokeHTTP POST api.twitter.com/2/tweets
-      body: {"text": "...", "media": {"media_ids": ["<id>"]}}
-  → HandleHttpResponse (200 back to app)
-```
-
----
-
-## Repo Changes (cso-operator-app)
-
-```
-cso-operator-app/
-├── streamers/
-│   ├── StreamersApp.json          # parent PG export (all 3 flows)
-│   ├── config.yaml                # module metadata
-│   └── pvc.yaml                   # clip storage PVC
-├── backend/
-│   ├── routers/
-│   │   └── streamers.py           # new: /api/streamers/*
-│   └── services/
-│       └── streamers.py           # Twitch API client, clip queue, X publisher
-├── frontend/
-│   └── src/
-│       ├── pages/
-│       │   └── Streamers.tsx      # new page
-│       └── components/
-│           └── ClipCard.tsx       # review queue card
-├── scripts/
-│   └── build-modules.py           # reads MODULES arg, writes modules.json
-└── Makefile                       # add MODULES= to build/bootstrap targets
-```
-
----
-
-## Decisions
-
-| Question | Decision |
+| `MODULES=` value | Active tabs |
 |---|---|
-| Kick support | **Later** — Twitch only for phase 1 |
-| Clip storage | **PVC** — persistent `/clips` mount, survives restarts |
-| Review queue | **Kafka retention 7 days** — `processed_clips` topic retention annotation |
-| X publishing | **Manual only** — Approve button in UI; auto-post is a future phase |
-| X API account | **X Premium on @TunaStreetTest** — no API tier limits blocking us |
+| *(empty)* | Operator only |
+| `rag` | Operator + RAG |
+| `streamers` | Operator + Streamers |
+| `rag,streamers` | Operator + RAG + Streamers |
+| `efm,rag,streamers` | All tabs |
 
 ---
 
-## Implementation Order
-
-Each phase ends with commit + push to both `cso-operator-app` and `DesktopShare`.
-
-| Phase | Work | Agents |
-|---|---|---|
-| 1 | `streamers/` dir + `config.yaml` + `build-modules.py` + Makefile MODULES arg | Solo |
-| 2a | Backend `streamers.py` router + Twitch API client | Parallel |
-| 2b | Dockerfile `ARG MODULES` + Vite env wiring | Parallel |
-| 3 | NiFi `FetchClips` flow JSON + test fetch into `new_clips` | Solo |
-| 4 | NiFi `ProcessClips` flow JSON + test `processed_clips` output | Solo |
-| 5a | Frontend `Streamers.tsx` — pipeline status + review queue | Parallel |
-| 5b | Backend `/api/streamers/*` endpoints (queue read + publish trigger) | Parallel |
-| 6 | NiFi `PublishClip` flow JSON + X API integration | Solo |
-| 7 | PVC for clip storage + Kafka topic retention config | Solo |
-| 8 | Update `cso-operator-app-plan.md`, `cso-operator-app-windows-test-plan.md`, `ai-sources.md` | Solo |
-
----
-
-## What Was Actually Built (vs Plan)
-
-The NiFi flows turned out simpler than the original design. Rather than NiFi doing the Twitch API calls and file downloads directly, the actual implementation uses:
-
-- **FetchClips**: GenerateFlowFile (15 min timer) → InvokeHTTP `POST /api/streamers/fetch-clips` (all Twitch GQL + download logic in Python)
-- **ProcessClips**: ConsumeKafka_2_6 ← new_clips → InvokeHTTP `POST /api/streamers/process-clip` → PublishKafka_2_6 → processed_clips
-- **PublishClip**: HandleHttpRequest (9001) → InvokeHTTP → HandleHttpResponse
-
-The backend service (`backend/services/streamers.py`) does all the heavy lifting: Twitch GQL for signed CloudFront URLs, aiokafka manual partition assignment, Whisper + vLLM calls, tweepy OAuth1 + chunked media upload + v2 create_tweet.
-
-## Key Technical Lessons
-
-| Issue | Fix |
-|---|---|
-| Twitch CDN changed in 2024 — thumbnail→.mp4 trick dead | Use GQL `VideoAccessToken_Clip` query → `sourceURL?sig=&token=` |
-| aiokafka hangs after manual `seek()` with `async for` | Use `getmany(tp, timeout_ms=5000)` one-shot fetch |
-| Strimzi created 1 partition despite spec saying 3 | Hardcode `TopicPartition(topic, 0)` |
-| X API v1.1 `update_status` retired | tweepy v2 `create_tweet` + v1 `media_upload(chunked=True)` |
-| X API 402 "no credits" | Pay-per-use billing — add credits at developer.x.com |
-| `vite-env.d.ts` caught by `.gitignore` | Add `!frontend/src/vite-env.d.ts` negation |
-
-## What's Next
-
-### High Priority (next session)
-
-- **ProcessClips refactor** — move Whisper + vLLM out of the Python backend into NiFi-native InvokeHTTP processors. Current architecture routes everything through the app backend which blocks NiFi's InvokeHTTP and causes timeouts on 45-60s clips. Existing RAG NiFi flows already do Whisper + vLLM — reuse that pattern.
-
-### Later
-
-- **Publish history tab** — show past published clips with tweet URLs, timestamps, and captions (`.published.json` already written, just needs a UI)
-- **Kick support** — credentials set (`KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`), API integration not yet implemented in `fetch_clips`
-- **Auto-publish mode** — bypass review UI and post top clips automatically on a schedule
-- **Streamer X handle mapping** — watchlist enhancement to store each streamer's X handle alongside Twitch login for credit tagging in tweets
-
-## Session 2 Additions (2026-06-28)
-
-Beyond the initial scaffold, this session added:
-
-| Feature | Details |
-|---|---|
-| Kafka topic panels | Live message count + last 5 records for `new_clips` and `processed_clips` in the Streamers UI |
-| Reset Kafka button | Deletes topics via Kafka Admin API (not Strimzi CRDs — those don't work reliably), wipes `/clips/*.mp4`, resets `.seen_clips.json` |
-| Dismiss on publish | Cards vanish after 1.2s "Posted ✓" flash; Refresh clears stale dismissed state |
-| Fallback captions | 5 rotating Tuna Street fallbacks when vLLM returns empty |
-| Duration filter | Fetch 20 clips per streamer, drop < 45s, sort longest-first, cap at 3 per streamer |
-| File-exists gate | Review queue only surfaces clips whose MP4 is on disk — no partial/stale cards |
-| 404 on missing file | Publish endpoint returns actionable 404 instead of opaque 502 when file is gone |
-| RBAC | Added `kafkatopics get/list/delete` to `cso-operator-app-writer` role in `cld-streaming` namespace |
-
-## Session 4 Additions (2026-06-29)
-
-| Change | Details |
-|---|---|
-| Clips per streamer 2 → 5 | `fetch_clips` cap raised from 2 to 5 per streamer — fetch pool is already 20 clips (≥45s, longest-first) |
-| Deploy without EFM tab | Pass `MODULES=rag,streamers` to omit EFM — e.g. `make deploy MODULES=rag,streamers` |
-| Whisper `chunk_length_s=60` | Matches clip max duration; fewer pipeline passes per clip |
-| ProcessClips concurrency | `concurrentlySchedulableTaskCount=3` on InvokeHTTP + PublishKafka in ProcessClips — NiFi sends 3 clips to backend simultaneously |
-| Kafka Topics auto-load | Topics panel now fetches on page mount; 30s backend TTL cache prevents repeated consumer spin-up |
-
-### Lessons learned
-
-| Attempt | What broke | Why |
-|---|---|---|
-| `beam_size=1` in HuggingFace pipeline | All transcripts empty | HuggingFace uses `num_beams`, not `beam_size` — wrong param silently caused TypeError |
-| `run_in_executor` + `asyncio.Semaphore` in Whisper server | Service refused all connections | Broke server startup; reverted — HTTP-level queuing at the NiFi/uvicorn layer is sufficient |
-
----
-
-## Session 3 Additions (2026-06-29)
-
-### Performance fixes
-
-| Change | Details |
-|---|---|
-| NiFi group ID cache | `_resolve_streamer_groups` BFS result cached 5 min — was running on every `/flows` poll (12×/min) |
-| Parallel Kafka consumers | `topic_stats` runs both consumers concurrently via `asyncio.gather` — halves wall time (~20s → ~10s) |
-| topic_stats result cache | 30s TTL — repeated Refresh clicks don't spin new consumers |
-| Flow poll 5s → 30s | Frontend poll interval reduced 6× |
-| Topics not auto-loaded | Kafka consumer lifecycle now only triggered by manual Refresh button |
-| Page-visibility pause | Poll stops when browser tab is hidden, resumes immediately when tab regains focus |
-| Lazy thumbnails | `loading="lazy"` on clip thumbnail images |
-
-### Feature additions
-
-| Feature | Details |
-|---|---|
-| Skip persistence | Skip button calls `POST /api/streamers/skip` → writes clip_id to `/clips/.skipped.json`; skipped clips filtered from queue on next load |
-| Publish persistence | `publish_clip` writes clip_id to `/clips/.published.json` on successful tweet; published clips filtered from queue |
-| Reset clears skip+publish | `Reset Kafka` button now also wipes `.skipped.json` and `.published.json` |
-| Video player in review | `<video controls preload="none">` in each ClipCard served via `GET /api/streamers/clip/{clip_id}` — `preload="none"` prevents simultaneous buffering of all queued clips |
-| Clips per run reduced | 3 per streamer → 2 per streamer — fewer downloads, less Whisper load per cycle |
-
-### Idle service scale-down (kubectl)
-
-To free CPU/memory on the cluster while not using EFM, MiNiFi, SSB, or Schema Registry:
-
-```bash
-# Scale down — run these yourself; bring back up with --replicas=1 when needed
-kubectl scale deploy efm             -n cld-streaming --replicas=0
-kubectl scale deploy ssb-mve         -n cld-streaming --replicas=0
-kubectl scale deploy ssb-sse         -n cld-streaming --replicas=0
-kubectl scale deploy schema-registry -n cld-streaming --replicas=0
-
-# MiNiFi is a bare Pod — delete it (re-create from ClouderaStreamingOperators/minifi-agent-pod.yaml)
-kubectl delete pod minifi-agent-k8s -n cld-streaming
-
-# Keep these running:
-# ssb-postgresql  — EFM + Schema Registry store config here; needed to restore them cleanly
-# All CSO Operator App services, NiFi, Kafka, Whisper, vLLM, Qdrant
-```
-
-To restore:
-```bash
-kubectl scale deploy efm             -n cld-streaming --replicas=1
-kubectl scale deploy ssb-mve         -n cld-streaming --replicas=1
-kubectl scale deploy ssb-sse         -n cld-streaming --replicas=1
-kubectl scale deploy schema-registry -n cld-streaming --replicas=1
-kubectl apply -f ~/ClouderaStreamingOperators/minifi-agent-pod.yaml
-```
-
-### Deploy reference (full install)
+## Deploy
 
 ```bash
 cd ~/cso-operator-app
-make deploy MODULES=efm,rag,streamers
+make deploy MODULES=rag,streamers
 ```
 
-After any deploy that resets credentials (e.g. first deploy on a new machine):
+After any deploy that resets the pod, re-inject credentials:
+
 ```bash
 source ~/.env
 kubectl set env deploy/cso-operator-app \
@@ -416,3 +123,143 @@ kubectl set env deploy/cso-operator-app \
   X_ACCESS_TOKEN_SECRET="${X_ACCESS_TOKEN_SECRET}" \
   STREAMERS_WATCH_LIST="stableronaldo"
 ```
+
+### Rebuild Whisper image
+
+Only needed when `whisper/Dockerfile.whisper` changes:
+
+```bash
+eval $(minikube docker-env)
+docker build -t streamwhisper:latest -f whisper/Dockerfile.whisper .
+kubectl rollout restart deploy/whisper-server
+```
+
+### Scale down idle services
+
+EFM, SSB, Schema Registry, and MiNiFi are not needed for the Streamers pipeline:
+
+```bash
+kubectl scale deploy efm schema-registry ssb-mve ssb-sse -n cld-streaming --replicas=0
+kubectl delete pod minifi-agent-k8s -n cld-streaming
+# ssb-postgresql stays running (EFM/Schema Registry config is stored there)
+```
+
+Restore: `--replicas=1` and `kubectl apply -f ~/ClouderaStreamingOperators/minifi-agent-pod.yaml`
+
+---
+
+## Streamers API Endpoints
+
+| Endpoint | Called by |
+|---|---|
+| `POST /api/streamers/fetch-clips` | NiFi FetchClips (every 15 min) |
+| `POST /api/streamers/process-clip` | NiFi ProcessClips (per Kafka message) |
+| `GET  /api/streamers/queue` | Review UI on load |
+| `GET  /api/streamers/clip/{clip_id}` | Video player in ClipCard |
+| `POST /api/streamers/publish` | Approve button |
+| `POST /api/streamers/skip` | Skip button |
+| `GET  /api/streamers/topics` | Topics panel (30s cached) |
+| `POST /api/streamers/reset` | Reset Kafka button |
+| `GET  /api/streamers/watchlist` | Watch List section |
+| `POST /api/streamers/watchlist` | Watch List add/remove |
+| `GET  /api/streamers/flows` | Pipeline Status panel (30s polled) |
+| `POST /api/streamers/flows/{name}/start\|stop` | Flow start/stop buttons |
+
+---
+
+## Clip Fetch Behavior
+
+- Fetches 20 clips per streamer, filters to ≥ 45s, sorts longest-first
+- Caps at **5 clips per streamer per run**
+- Deduplication via `/clips/.seen_clips.json` — no re-download of previously fetched clips
+- Skip/publish state persisted to `/clips/.skipped.json` and `/clips/.published.json`
+- Reset Kafka button wipes MP4s, seen/skipped/published lists, and deletes both topics
+
+---
+
+## Whisper Configuration
+
+`whisper/Dockerfile.whisper` — Whisper-large-v3, Flash Attention 2, CUDA 12.4:
+
+```python
+pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
+```
+
+- `chunk_length_s=60` — matches Twitch clip max duration
+- `batch_size=24` — GPU-tuned for RTX 4060
+- Temp file written as `.mp4` (matches actual clip format)
+- Keep the server synchronous — `run_in_executor` broke startup
+
+---
+
+## NiFi ProcessClips Concurrency
+
+`streamers/StreamersApp.json` sets `concurrentlySchedulableTaskCount=3` on `InvokeHTTP` and `PublishKafka_2_6` in ProcessClips. NiFi sends 3 clips to the backend simultaneously; Whisper queues them at the HTTP level. ConsumeKafka stays at 1 (single Kafka partition).
+
+---
+
+## Key Technical Gotchas
+
+| Issue | Fix |
+|---|---|
+| Twitch CDN changed 2024 — thumbnail→.mp4 URL dead | GQL `VideoAccessToken_Clip` query → `sourceURL?sig=&token=` |
+| aiokafka hangs after manual `seek()` with `async for` | Use `getmany(tp, timeout_ms=5000)` one-shot fetch |
+| Strimzi created 1 partition despite spec saying 3 | Hardcode `TopicPartition(topic, 0)` |
+| X API v1.1 `update_status` retired | tweepy v2 `create_tweet` + v1 `media_upload(chunked=True)` |
+| X API 402 "no credits" | Pay-per-use billing — add credits at developer.x.com |
+| HuggingFace pipeline has no `beam_size` param | Use `num_beams` or omit — default is already greedy |
+| `asyncio.Semaphore` + `run_in_executor` in Whisper | Broke server startup — HTTP queuing at NiFi layer is sufficient |
+
+---
+
+## What's Next
+
+- **ProcessClips NiFi refactor** — move Whisper + vLLM calls out of Python backend into NiFi-native InvokeHTTP processors (same pattern as the existing RAG flows). Eliminates backend timeout risk on long clips.
+- **Publish history tab** — `.published.json` already written per clip; just needs a UI to surface tweet URLs + timestamps
+- **Auto-publish mode** — bypass review queue, post top clips on a schedule
+- **Kick support** — credentials already set (`KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`), API integration not built
+- **Streamer X handle mapping** — store X handle alongside Twitch login in watch list for credit tagging
+
+---
+
+## Session History
+
+### Session 2 (2026-06-28)
+
+| Feature | Details |
+|---|---|
+| Kafka topic panels | Live message count + last 5 records for `new_clips` and `processed_clips` in the Streamers UI |
+| Reset Kafka button | Deletes topics via Kafka Admin API, wipes `/clips/*.mp4`, resets `.seen_clips.json` |
+| Dismiss on publish | Cards vanish after 1.2s "Posted ✓" flash; Refresh clears stale dismissed state |
+| Fallback captions | 5 rotating Tuna Street fallbacks when vLLM returns empty |
+| Duration filter | Fetch 20 clips per streamer, drop < 45s, sort longest-first, cap at 3 per streamer |
+| File-exists gate | Review queue only surfaces clips whose MP4 is on disk |
+| 404 on missing file | Publish endpoint returns actionable 404 instead of opaque 502 |
+| RBAC | Added `kafkatopics get/list/delete` to `cso-operator-app-writer` role in `cld-streaming` |
+
+### Session 3 (2026-06-29)
+
+| Change | Details |
+|---|---|
+| NiFi group ID cache | `_resolve_streamer_groups` BFS result cached 5 min |
+| Parallel Kafka consumers | `topic_stats` runs both consumers concurrently via `asyncio.gather` |
+| topic_stats result cache | 30s TTL — repeated Refresh clicks don't spin new consumers |
+| Flow poll 5s → 30s | Frontend poll interval reduced 6× |
+| Page-visibility pause | Poll stops when browser tab is hidden, resumes on focus |
+| Lazy thumbnails | `loading="lazy"` on clip thumbnail images |
+| Skip persistence | Skip writes clip_id to `/clips/.skipped.json`; filtered from queue on next load |
+| Publish persistence | `publish_clip` writes clip_id to `/clips/.published.json` on successful tweet |
+| Reset clears skip+publish | Reset Kafka button also wipes `.skipped.json` and `.published.json` |
+| Video player in review | `<video controls preload="none">` in each ClipCard, served via `GET /api/streamers/clip/{clip_id}` |
+
+### Session 4 (2026-06-29)
+
+| Change | Details |
+|---|---|
+| Clips per streamer 2 → 5 | `fetch_clips` cap raised — fetch pool is 20 clips (≥45s, longest-first) |
+| Deploy without EFM tab | `make deploy MODULES=rag,streamers` omits EFM from frontend |
+| Whisper `chunk_length_s=60` | Matches clip max duration; fewer pipeline passes per clip |
+| ProcessClips concurrency | `concurrentlySchedulableTaskCount=3` on InvokeHTTP + PublishKafka in ProcessClips |
+| Kafka Topics auto-load | Topics panel fetches on page mount; 30s backend TTL cache |
+| Temp file `.wav` → `.mp4` | Whisper server now writes clips with correct extension |
+| Router imports cleaned up | `os` and `json` moved to module level in `routers/streamers.py` |
