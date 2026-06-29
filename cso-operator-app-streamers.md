@@ -210,6 +210,10 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 | HuggingFace pipeline has no `beam_size` param | Use `num_beams` or omit — default is already greedy |
 | `asyncio.Semaphore` + `run_in_executor` in Whisper | Broke server startup — HTTP queuing at NiFi layer is sufficient |
 | NiFi InvokeHTTP URL to app | Use `http://cso-operator-app.default.svc.cluster.local:8000/api/...` — NodePort 30080 is external only and will timeout |
+| Kick public API `/clips` endpoint | Returns 404 — use `kick.com/api/v2/clips?channel=<slug>` with browser `User-Agent` + `Referer: https://kick.com/` headers |
+| Kick HLS clips need ffmpeg remux | `clip_url` is `.m3u8` — download with `ffmpeg -c copy -movflags +faststart`; do NOT re-encode with libx264 (too slow) |
+| Whisper can't read MP4 directly | Whisper server saves uploads as `.wav`; soundfile fails on MP4 content — extract 16kHz mono WAV with ffmpeg before uploading |
+| Parallel fetch race condition | `seen` set must be updated before download, not after, to prevent concurrent streamers downloading the same clip |
 
 ---
 
@@ -218,7 +222,7 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 - **ProcessClips NiFi refactor** — move Whisper + vLLM calls out of Python backend into NiFi-native InvokeHTTP processors (same pattern as the existing RAG flows). Eliminates backend timeout risk on long clips.
 - **Publish history tab** — `.published.json` already written per clip; just needs a UI to surface tweet URLs + timestamps
 - **Auto-publish mode** — bypass review queue, post top clips on a schedule
-- **Kick support** — credentials already set (`KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`), API integration not built
+- **Kick support** — ✓ DONE (session 6)
 - **Streamer X handle mapping** — store X handle alongside Twitch login in watch list for credit tagging
 
 ---
@@ -252,6 +256,22 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 | Publish persistence | `publish_clip` writes clip_id to `/clips/.published.json` on successful tweet |
 | Reset clears skip+publish | Reset Kafka button also wipes `.skipped.json` and `.published.json` |
 | Video player in review | `<video controls preload="none">` in each ClipCard, served via `GET /api/streamers/clip/{clip_id}` |
+
+### Session 6 (2026-06-29)
+
+| Change | Details |
+|---|---|
+| Kick.com clip support | `kick:slug` prefix in watch list routes to Kick; bare names stay Twitch. `kick.com/api/v2/clips` with browser headers fetches clips |
+| Kick HLS download | ffmpeg `-c copy -movflags +faststart` remuxes HLS `.m3u8` to MP4 in seconds |
+| WAV pre-extraction for Whisper | ffmpeg extracts 16kHz mono WAV before Whisper upload — fixes transcription for both Kick and Twitch |
+| Platform badge in review queue | TWITCH/KICK badge always shown next to streamer name; defaults to twitch for old clips |
+| Platform badge in Kafka Topics panel | `src` column added to topic record table |
+| Platform-aware watch list UI | Twitch/Kick toggle + auto-prefixes `kick:` when adding; pills show platform badge |
+| Caption always names platform | vLLM prompt requires "Twitch" or "Kick" in every generated caption |
+| Clips per run 5 → 2 | Reduces fetch time and NiFi timeout risk |
+| Parallel streamer fetch | All streamers fetched concurrently via `asyncio.gather` |
+| Seen-set race condition fix | Clip marked seen before download so concurrent streamers skip duplicates |
+| ffmpeg added to app Dockerfile | Required for HLS remux and WAV extraction in the app container |
 
 ### Session 5 (2026-06-29)
 
