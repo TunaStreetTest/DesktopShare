@@ -16,7 +16,7 @@ tags:
   - operator-app
 ---
 
-> **Status:** COMPLETE AND WORKING — full pipeline end-to-end verified. Twitch clips download → Whisper transcription → vLLM emoji caption → review UI → X publish live on @TunaStreetTest. Dismiss-on-publish UX implemented (card vanishes after 1.2s flash). X API running pay-per-use (added credits). NiFi flows committed as `streamers/StreamersApp.json`.  
+> **Status:** WORKING — pipeline live, publishing to @TunaStreetTest. Known issues: Whisper transcription times out NiFi InvokeHTTP on 45-60s clips (processing architecture needs refactor to NiFi-native processors). Skip/publish state not persisted across page refresh. Both queued for next session.  
 > Architecture seed: [`files/Streamers.md`](files/Streamers.md)  
 > Companion plan: [`cso-operator-app-plan.md`](cso-operator-app-plan.md)  
 > App repo: `github.com/cldr-steven-matison/cso-operator-app`
@@ -296,6 +296,29 @@ The backend service (`backend/services/streamers.py`) does all the heavy lifting
 
 ## What's Next
 
-- **Publish history tab** — persist published clip metadata to a JSON file on PVC so history survives page refresh
-- **Kick support** — credentials set, API integration not yet implemented in `fetch_clips`
+### High Priority (next session)
+
+- **ProcessClips refactor** — move Whisper + vLLM out of the Python backend into NiFi-native InvokeHTTP processors. Current architecture routes everything through the app backend which blocks NiFi's InvokeHTTP and causes timeouts on 45-60s clips. Existing RAG NiFi flows already do Whisper + vLLM — reuse that pattern.
+- **Skip/publish persistence** — write to `/clips/.published.json` and `/clips/.skipped.json` on the PVC (same pattern as `.seen_clips.json`). Load on startup to restore dismissed state across pod restarts and page refreshes. Enables a History tab.
+
+### Later
+
+- **Publish history tab** — show past published clips with tweet URLs, timestamps, and captions
+- **Kick support** — credentials set (`KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`), API integration not yet implemented in `fetch_clips`
 - **Auto-publish mode** — bypass review UI and post top clips automatically on a schedule
+- **Streamer X handle mapping** — watchlist enhancement to store each streamer's X handle alongside Twitch login for credit tagging in tweets
+
+## Session 2 Additions (2026-06-28)
+
+Beyond the initial scaffold, this session added:
+
+| Feature | Details |
+|---|---|
+| Kafka topic panels | Live message count + last 5 records for `new_clips` and `processed_clips` in the Streamers UI |
+| Reset Kafka button | Deletes topics via Kafka Admin API (not Strimzi CRDs — those don't work reliably), wipes `/clips/*.mp4`, resets `.seen_clips.json` |
+| Dismiss on publish | Cards vanish after 1.2s "Posted ✓" flash; Refresh clears stale dismissed state |
+| Fallback captions | 5 rotating Tuna Street fallbacks when vLLM returns empty |
+| Duration filter | Fetch 20 clips per streamer, drop < 45s, sort longest-first, cap at 3 per streamer |
+| File-exists gate | Review queue only surfaces clips whose MP4 is on disk — no partial/stale cards |
+| 404 on missing file | Publish endpoint returns actionable 404 instead of opaque 502 when file is gone |
+| RBAC | Added `kafkatopics get/list/delete` to `cso-operator-app-writer` role in `cld-streaming` namespace |
