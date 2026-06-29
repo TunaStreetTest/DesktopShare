@@ -209,6 +209,7 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 | X API 402 "no credits" | Pay-per-use billing — add credits at developer.x.com |
 | HuggingFace pipeline has no `beam_size` param | Use `num_beams` or omit — default is already greedy |
 | `asyncio.Semaphore` + `run_in_executor` in Whisper | Broke server startup — HTTP queuing at NiFi layer is sufficient |
+| NiFi InvokeHTTP URL to app | Use `http://cso-operator-app.default.svc.cluster.local:8000/api/...` — NodePort 30080 is external only and will timeout |
 
 ---
 
@@ -251,6 +252,18 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 | Publish persistence | `publish_clip` writes clip_id to `/clips/.published.json` on successful tweet |
 | Reset clears skip+publish | Reset Kafka button also wipes `.skipped.json` and `.published.json` |
 | Video player in review | `<video controls preload="none">` in each ClipCard, served via `GET /api/streamers/clip/{clip_id}` |
+
+### Session 5 (2026-06-29)
+
+| Change | Details |
+|---|---|
+| Approve → queue | Approve button now instant — adds to `.pending_publish.json`, returns `Queued #N`. NiFi PublishClip flow changed to `GenerateFlowFile (120s) → InvokeHTTP POST /api/streamers/publish-next` to rate-limit X posts |
+| `/approve` + `/publish-next` endpoints | Approve queues to `.pending_publish.json`; publish-next pops one and calls tweepy. `/publish` kept for direct/debug use |
+| Hashtag normalizer | `_clean_caption()` now normalizes `#ALL_CAPS` → `#TitleCase` and `#WORD_UNDERSCORE` → `#WordUnderscore` |
+| Caption label fix | System message tells vLLM output-only; `_clean_caption()` strips `**Label:**` prefix and surrounding quotes as fallback |
+| All polls slowed + visibility pause | HealthBar 30s→60s, Operators 15s→60s, PodSummary 5s→30s, NifiControls 4s→30s. All now pause when browser tab is hidden |
+| HealthBar operators call removed | HealthBar was calling `k8sOperators()` every tick on every tab just for the Flink dot — removed. Operators component (Operator tab only) already covers it |
+| NiFi URL for internal calls | Always `http://cso-operator-app.default.svc.cluster.local:8000/api/...` — not NodePort 30080 |
 
 ### Session 4 (2026-06-29)
 
