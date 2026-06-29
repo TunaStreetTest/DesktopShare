@@ -16,7 +16,7 @@ tags:
   - operator-app
 ---
 
-> **Status:** WORKING — pipeline live, publishing to @TunaStreetTest. Skip/publish state now persisted to PVC. Video playback embedded in review queue. Performance optimized (NiFi group ID cache, parallel Kafka consumers, 30s poll, page-visibility pausing). Known issue: Whisper transcription times out NiFi InvokeHTTP on 45-60s clips (processing architecture needs refactor to NiFi-native processors).  
+> **Status:** WORKING — pipeline live, publishing to @TunaStreetTest. Skip/publish state now persisted to PVC. Video playback embedded in review queue. Performance optimized (NiFi group ID cache, parallel Kafka consumers, 30s poll, page-visibility pausing). Whisper tuned for speed: beam_size=1, chunk_length_s=60, async GPU queue with Semaphore. ProcessClips runs 3 concurrent NiFi tasks.  
 > Architecture seed: [`files/Streamers.md`](files/Streamers.md)  
 > Companion plan: [`cso-operator-app-plan.md`](cso-operator-app-plan.md)  
 > App repo: `github.com/cldr-steven-matison/cso-operator-app`
@@ -328,6 +328,8 @@ Beyond the initial scaffold, this session added:
 |---|---|
 | Clips per streamer 2 → 5 | `fetch_clips` cap raised from 2 to 5 per streamer — fetch pool is already 20 clips (≥45s, longest-first) |
 | Deploy without EFM tab | Pass `MODULES=rag,streamers` to omit EFM — e.g. `make deploy MODULES=rag,streamers` |
+| Whisper speed tuning | `beam_size=1` (greedy, ~2-3× faster decode), `chunk_length_s=60` (matches clip max), `run_in_executor` + `Semaphore(1)` keeps FastAPI accepting uploads while GPU is busy |
+| ProcessClips concurrency | `concurrentlySchedulableTaskCount=3` on InvokeHTTP + PublishKafka in ProcessClips — NiFi sends 3 clips to backend simultaneously; Whisper queues them and pipelines with vLLM |
 
 ---
 
