@@ -328,8 +328,16 @@ Beyond the initial scaffold, this session added:
 |---|---|
 | Clips per streamer 2 → 5 | `fetch_clips` cap raised from 2 to 5 per streamer — fetch pool is already 20 clips (≥45s, longest-first) |
 | Deploy without EFM tab | Pass `MODULES=rag,streamers` to omit EFM — e.g. `make deploy MODULES=rag,streamers` |
-| Whisper speed tuning | `beam_size=1` (greedy, ~2-3× faster decode), `chunk_length_s=60` (matches clip max), `run_in_executor` + `Semaphore(1)` keeps FastAPI accepting uploads while GPU is busy |
-| ProcessClips concurrency | `concurrentlySchedulableTaskCount=3` on InvokeHTTP + PublishKafka in ProcessClips — NiFi sends 3 clips to backend simultaneously; Whisper queues them and pipelines with vLLM |
+| Whisper `chunk_length_s=60` | Matches clip max duration; fewer pipeline passes per clip |
+| ProcessClips concurrency | `concurrentlySchedulableTaskCount=3` on InvokeHTTP + PublishKafka in ProcessClips — NiFi sends 3 clips to backend simultaneously |
+| Kafka Topics auto-load | Topics panel now fetches on page mount; 30s backend TTL cache prevents repeated consumer spin-up |
+
+### Lessons learned
+
+| Attempt | What broke | Why |
+|---|---|---|
+| `beam_size=1` in HuggingFace pipeline | All transcripts empty | HuggingFace uses `num_beams`, not `beam_size` — wrong param silently caused TypeError |
+| `run_in_executor` + `asyncio.Semaphore` in Whisper server | Service refused all connections | Broke server startup; reverted — HTTP-level queuing at the NiFi/uvicorn layer is sufficient |
 
 ---
 
