@@ -219,11 +219,191 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 
 ## What's Next
 
-- **ProcessClips NiFi refactor** — move Whisper + vLLM calls out of Python backend into NiFi-native InvokeHTTP processors (same pattern as the existing RAG flows). Eliminates backend timeout risk on long clips.
+- **ProcessClips NiFi refactor** — ✓ PLANNED (see section below)
 - **Publish history tab** — `.published.json` already written per clip; just needs a UI to surface tweet URLs + timestamps
 - **Auto-publish mode** — bypass review queue, post top clips on a schedule
-- **Kick support** — ✓ DONE (session 6)
-- **Streamer X handle mapping** — store X handle alongside Twitch login in watch list for credit tagging
+
+---
+
+## ProcessClips NiFi Refactor Plan
+
+Move Whisper transcription and vLLM caption generation out of the Python backend into NiFi-native InvokeHTTP processors — same pattern as the existing `StreamToWhisper` and `StreamTovLLM` RAG flows. Eliminates backend HTTP timeout risk; all intermediate state is visible in NiFi as flowfile attributes.
+
+### Why
+
+Current `ProcessClips` PG: `ConsumeKafka → InvokeHTTP POST /process-clip → PublishKafka`
+
+The backend's `/process-clip` does: ffmpeg WAV extract → POST whisper:8001 → POST vllm:8000 → clean caption → build tweet → return JSON. If Whisper takes 120s on a long Kick clip, NiFi's InvokeHTTP timeout fires and the clip is lost. In NiFi we can set per-step timeouts, see intermediate flowfile content, and retry individual steps.
+
+### New ProcessClips NiFi Flow (12 processors)
+
+```
+ConsumeKafka_2_6 (new_clips)
+  group.id: StreamersProcessClips
+  auto.offset.reset: earliest
+  concurrentlySchedulableTaskCount: 1   ← keep at 1; Whisper is synchronous
+  ↓ flowfile = JSON clip record from Kafka
+
+EvaluateJsonPath
+  Destination: flowfile-attribute
+  clip_id:       $.clip_id
+  source:        $.source
+  streamer:      $.streamer
+  title:         $.title
+  clip_path:     $.clip_path
+  url:           $.url
+  thumbnail_url: $.thumbnail_url
+  duration:      $.duration
+  created_at:    $.created_at
+  ↓ flowfile unchanged; attributes populated
+
+InvokeHTTP  [GET WAV]
+  HTTP Method:  GET
+  Remote URL:   http://cso-operator-app.default.svc.cluster.local:8000/api/streamers/wav/${clip_id}
+  Read Timeout: 90 secs
+  Connection Timeout: 10 secs
+  → Response relationship only (route Failure/No Retry to error log)
+  ↓ flowfile = raw WAV bytes (16kHz mono)
+
+UpdateAttribute
+  filename:  ${clip_id}.wav
+  mime.type: audio/wav
+
+InvokeHTTP  [POST Whisper]
+  HTTP Method:          POST
+  Remote URL:           http://whisper-service.default.svc.cluster.local:8001/transcribe
+  Content-Type:         ${mime.type}
+  send-message-body:    true
+  set-form-filename:    true
+  file:                 ${filename}
+  form-body-form-name:  file
+  Read Timeout:         300 secs
+  Connection Timeout:   10 secs
+  → Response → flowfile = {"text": "transcript..."}
+
+EvaluateJsonPath
+  Destination: flowfile-attribute
+  transcript: $.text
+  ↓ flowfile unchanged; transcript attribute set
+
+ReplaceText  [build vLLM request]
+  Replacement Strategy: Regex Replace
+  Regular Expression: (?s)(^.*$)
+  Replacement Value:
+    {
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "messages": [
+        {"role": "system", "content": "You are a hype gaming content creator writing tweets. Output ONLY the tweet text — no labels, no quotes around it."},
+        {"role": "user", "content": "Write a punchy tweet reaction (under 200 chars) to this clip by ${streamer:escapeJson()}. React to what actually happened — quote the funniest or wildest line if it fits. Use 1-2 emojis. Keep it natural, no hashtags. Clip title: '${title:escapeJson()}'. Transcript: ${transcript:substring(0, 600):escapeJson()}"}
+      ],
+      "max_tokens": 120,
+      "temperature": 0.85
+    }
+  ↓ flowfile = vLLM request JSON body
+
+InvokeHTTP  [POST vLLM]
+  HTTP Method:     POST
+  Remote URL:      http://vllm-service.default.svc.cluster.local:8000/v1/chat/completions
+  Content-Type:    application/json
+  Read Timeout:    60 secs
+  Connection Timeout: 10 secs
+  → Response → flowfile = OpenAI-format JSON response
+
+EvaluateJsonPath
+  Destination: flowfile-attribute
+  raw_caption: $.choices[0].message.content
+  ↓ flowfile unchanged; raw_caption attribute set
+
+ReplaceText  [build processed_clips Kafka message]
+  Replacement Strategy: Regex Replace
+  Regular Expression: (?s)(^.*$)
+  Replacement Value:
+    {"clip_id":"${clip_id}","source":"${source}","streamer":"${streamer}","title":"${title:escapeJson()}","url":"${url}","thumbnail_url":"${thumbnail_url}","duration":${duration},"created_at":"${created_at}","clip_path":"${clip_path}","transcript":"${transcript:escapeJson()}","raw_caption":"${raw_caption:escapeJson()}"}
+
+PublishKafka_2_6  (processed_clips)
+  topic: processed_clips
+  bootstrap.servers: my-cluster-kafka-bootstrap.cld-streaming.svc:9092
+```
+
+### Backend Changes Required
+
+#### 1. Add `GET /api/streamers/wav/{clip_id}` (router + service)
+
+New endpoint in `routers/streamers.py`:
+```python
+@router.get("/wav/{clip_id}")
+async def serve_wav(clip_id: str):
+    """Extract 16kHz mono WAV from MP4. Called by NiFi ProcessClips GET WAV step."""
+    if not re.match(r'^[A-Za-z0-9_\-]+$', clip_id):
+        raise HTTPException(status_code=400, detail="Invalid clip_id")
+    mp4_path = Path(settings.CLIP_STORAGE_PATH) / f"{clip_id}.mp4"
+    if not mp4_path.exists():
+        raise HTTPException(status_code=404, detail="Clip not found")
+    wav_path = Path(settings.CLIP_STORAGE_PATH) / f"{clip_id}.wav"
+    import asyncio, subprocess
+    proc = await asyncio.to_thread(
+        subprocess.run,
+        ["ffmpeg", "-y", "-i", str(mp4_path), "-vn", "-ac", "1", "-ar", "16000", str(wav_path)],
+        capture_output=True, timeout=60,
+    )
+    if proc.returncode != 0 or not wav_path.exists():
+        raise HTTPException(status_code=500, detail="ffmpeg WAV extraction failed")
+    return FileResponse(str(wav_path), media_type="audio/wav")
+```
+
+WAV files accumulate alongside MP4s in `/clips/`. Add `*.wav` to reset cleanup in `reset_kafka()`.
+
+#### 2. Update `clip_queue()` in `services/streamers.py`
+
+Kafka messages now store `raw_caption` (not final tweet text). Apply `_clean_caption` + `_build_tweet` at queue-read time so the catalog and suffix format are always fresh:
+
+```python
+# Inside the per-message loop in clip_queue():
+raw = record.get("raw_caption")
+if raw and not raw.startswith("["):
+    x_handle = get_x_handle(record.get("streamer", ""))
+    record["caption"] = _build_tweet(
+        _clean_caption(raw),
+        record.get("source", "twitch"),
+        record.get("streamer", ""),
+        x_handle,
+    )
+# Fall through: old records with pre-built "caption" field are used as-is
+```
+
+#### 3. Keep `POST /api/streamers/process-clip`
+
+Endpoint stays for manual/debug use. NiFi will no longer call it once the new ProcessClips PG is live.
+
+#### 4. Kafka reset — wipe WAV files
+
+In `reset_kafka()`, add WAV cleanup alongside MP4:
+```python
+for wav in glob.glob(str(storage / "*.wav")):
+    Path(wav).unlink(missing_ok=True)
+```
+
+### Rollout Steps
+
+1. Add `GET /wav/{clip_id}` endpoint — deploy app
+2. Test endpoint manually: `curl http://localhost:8000/api/streamers/wav/<clip_id> -o test.wav`
+3. Update `clip_queue()` to compute caption from `raw_caption` — deploy app
+4. Update `setup-streamers-flows.py` to build new 12-processor ProcessClips PG
+5. Stop current ProcessClips PG in NiFi UI
+6. Run updated `setup-streamers-flows.py` to replace ProcessClips PG
+7. Start new ProcessClips PG — verify flowfile attributes visible in NiFi
+8. End-to-end test: fetch clips → watch NiFi → processed_clips → review UI shows transcripts + captions
+9. Update `StreamersApp.json` to snapshot the new flow for future import
+
+### Key Gotchas
+
+| Risk | Mitigation |
+|---|---|
+| Whisper server still synchronous (no semaphore) | Keep ConsumeKafka concurrentlySchedulableTaskCount=1 |
+| WAV file left on disk if NiFi crashes mid-flow | Reset button now also wipes *.wav |
+| Old processed_clips records have `caption` not `raw_caption` | clip_queue() falls back to raw `caption` field for old records |
+| InvokeHTTP WAV URL uses EL `${clip_id}` — must set Dynamic Property disabled | clip_id comes from EvaluateJsonPath attribute, use it directly in URL field |
+| Return Timestamps must be True in Whisper for clips >30s | Already set in Whisper ConfigMap — no change needed |
 
 ---
 
