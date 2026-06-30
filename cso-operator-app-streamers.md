@@ -225,6 +225,72 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 - **ProcessClips NiFi refactor** — ✓ PLANNED (see section below)
 - **Publish history tab** — `.published.json` already written per clip; just needs a UI to surface tweet URLs + timestamps
 - **Auto-publish mode** — bypass review queue, post top clips on a schedule
+- **Post to real X account** — ✓ PLANNED (see section below)
+- **GPU optimization** — Whisper CPU + 5B caption model — see [`gpu-optimization-plan.md`](gpu-optimization-plan.md)
+
+---
+
+## Posting to a Real X Account (Multi-Account Setup)
+
+**Goal:** Keep the X app registered under @TunaStreetTest (developer account) but post to a different real account. No public app needed — only you can authorize it.
+
+### How It Works
+
+The X app owner (developer account) and the account that grants OAuth access are separate concepts. The app stays registered under @TunaStreetTest. Your real account authorizes the app via OAuth and you capture those tokens. Posts flow through the same tweepy code — just different credentials.
+
+### Steps
+
+**1. Confirm OAuth 1.0a User Context is enabled on the app**
+
+In [developer.twitter.com](https://developer.twitter.com) (logged in as @TunaStreetTest):
+- Open the app → Settings → User authentication settings
+- Enable OAuth 1.0a
+- Set callback URL: `http://localhost:3000/callback` (or any localhost port)
+- Save
+
+**2. Run the one-shot OAuth dance for your real account**
+
+```python
+# oauth_dance.py — run once, prints real account tokens
+import tweepy
+
+API_KEY = "..."        # your app's consumer key (from @TunaStreetTest dev portal)
+API_SECRET = "..."     # your app's consumer secret
+
+auth = tweepy.OAuthHandler(API_KEY, API_SECRET, callback="oob")
+print("Go to this URL and log in as your REAL account:")
+print(auth.get_authorization_url())
+
+pin = input("Enter the PIN from Twitter: ")
+auth.get_access_token(pin)
+
+print(f"\nX_ACCESS_TOKEN={auth.access_token}")
+print(f"X_ACCESS_TOKEN_SECRET={auth.access_token_secret}")
+```
+
+Run `python oauth_dance.py` — it prints a URL, you open it logged in as the real account, approve, paste the PIN. Done.
+
+**3. Inject real account tokens into the pod**
+
+```bash
+source ~/.env
+kubectl set env deploy/cso-operator-app \
+  X_ACCESS_TOKEN="<real_account_access_token>" \
+  X_ACCESS_TOKEN_SECRET="<real_account_access_token_secret>"
+# X_API_KEY and X_API_SECRET stay the same (they're the app's consumer keys, not account-specific)
+```
+
+**4. Verify**
+
+Post a test clip through the review UI — it should appear on the real account, not @TunaStreetTest.
+
+### Notes
+
+- App stays private — no listing, no approval process, only you can authorize
+- Consumer key/secret belong to the app (stay the same)
+- Access token/secret belong to the account (swap these to switch accounts)
+- To switch back to @TunaStreetTest, re-inject the original access token/secret
+- Add `oauth_dance.py` to `.gitignore` — don't commit it with keys filled in
 
 ---
 
