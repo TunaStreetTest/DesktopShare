@@ -106,6 +106,9 @@ cd ~/cso-operator-app
 make deploy MODULES=rag,streamers
 ```
 
+App is permanently at **http://127.0.0.1:8000** via `minikube tunnel` (LoadBalancer service).
+`minikube tunnel` must be running — it's the first step in the terminal setup and also auto-opens Chromium.
+
 After any deploy that resets the pod, re-inject credentials:
 
 ```bash
