@@ -534,6 +534,22 @@ for wav in glob.glob(str(storage / "*.wav")):
 | HealthBar operators call removed | HealthBar was calling `k8sOperators()` every tick on every tab just for the Flink dot — removed. Operators component (Operator tab only) already covers it |
 | NiFi URL for internal calls | Always `http://cso-operator-app.default.svc.cluster.local:8000/api/...` — not NodePort 30080 |
 
+### Session 8 (2026-06-30)
+
+| Change | Details |
+|---|---|
+| Fetch mode toggle | Watch List card has `Recent \| Top Clips` toggle + period selector (`1 Month \| All Time`). Mode persisted to `/clips/.fetch_mode.json` — survives pod restarts |
+| Twitch top clips | Top mode sets `started_at` to 30 days ago (month) or omits it (all time); sorts by `view_count` instead of duration. Pulled many high-view historical clips successfully |
+| Kick top clips | Kick channel endpoint only accepts `sort=date` — 422 on any other sort value. No time window support. Top mode fetches 20 most recent and sorts by `view_count` client-side |
+| Kick wrong-channel bug fixed | Global `kick.com/api/v2/clips?channel=slug` param is ignored server-side — was returning random global clips. Switched to `kick.com/api/v2/channels/{slug}/clips` (channel-specific endpoint). Added client-side `channel.slug` validation as safety net |
+| Clip card links + metadata | Title links to clip URL on platform; streamer name links to Twitch/Kick profile; `@x_handle` links to X. View count and created date shown inline |
+| x_handle in queue response | `get_x_handle()` called at queue-read time in `clip_queue()`; injected into each clip dict returned to frontend |
+| Commentary textarea removed | Caption field is the only editable field — commentary box removed. Caption textarea taller (rows=4) |
+| Approve message cleaned | Removed "~2 min" time estimate from post-approve confirmation |
+| X multi-account plan | Documented OAuth 1.0a dance to post to real account via app registered under @TunaStreetTest — see "Posting to a Real X Account" section |
+| GPU optimization plan | New `gpu-optimization-plan.md` — VRAM analysis for RTX 4060 8GB, three options for running 5B model alongside Whisper, open questions before acting |
+| Full Kafka reset | Wiped 76 stale clips + both topics after Kick bug discovered — fresh start with correct channel filtering |
+
 ### Session 4 (2026-06-29)
 
 | Change | Details |
