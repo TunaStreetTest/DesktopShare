@@ -238,3 +238,87 @@ stop/start of the minikube container — only to `minikube delete`.
 - Strimzi `Kafka` CR edits trigger rolling restarts of brokers — fine, but takes minutes.
 - Don't lower **memory** requests below actual working set; OOMKills are worse than CPU throttling.
 - This is a stopgap until the cluster is rebuilt under the in-progress CSO Operator Observability automation.
+
+---
+
+## 2026-06-29 — Windows Host Tuning (free RAM/CPU for Whisper + Docker/Minikube)
+
+**Context:** Host RAM profile observed via `Get-Process`:
+- `vmmemWSL` — 9.6 GB (WSL2 VM holding Docker + Minikube, expected)
+- `Memory Compression` — 3.9 GB (Windows compressing RAM, sign of pressure)
+- `MsMpEng` (Defender) — 208 MB
+- `PhoneExperienceHost` (Phone Link) — 160 MB, unused
+
+### MiNiFi Removal (completed)
+
+MiNiFi C++ was still registered as a Windows service even after directory deletion.
+Cleaned up in elevated PowerShell:
+
+```powershell
+# Removed stale Windows service
+sc.exe delete "Apache NiFi MiNiFi"
+
+# Removed leftover directories
+Remove-Item -Path "C:\minifi" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "C:\WINDOWS\system32\nifi-minifi-cpp\" -Recurse -Force -ErrorAction SilentlyContinue
+
+# Removed stale MSI registry entry (was still showing in Apps & features)
+Remove-Item 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{7107577C-5716-45AE-90E6-07B3BABCD461}' -Recurse -Force
+```
+
+### Windows Services to Disable
+
+Run these in an **elevated PowerShell** to stop and disable services that waste RAM/CPU on this workstation:
+
+```powershell
+$services = @(
+    "SysMain",       # Superfetch — preloads apps into RAM, fights Whisper directly
+    "DiagTrack",     # Microsoft telemetry (Connected User Experiences)
+    "WSearch",       # Windows Search indexer — CPU/disk churn in background
+    "Spooler",       # Print Spooler — no printer on this machine
+    "dptftcs",       # Intel Dynamic Tuning Technology Telemetry
+    "FvSvc",         # NVIDIA FrameView SDK — GPU benchmarking, not needed
+    "DoSvc",         # Windows Update delivery optimization
+    "WSAIFabricSvc", # Windows Subsystem for Android — not in use
+    "SSDPSRV",       # UPnP/SSDP discovery — not needed
+    "BthAvctpSvc",   # Bluetooth AVCTP
+    "BTAGService",   # Bluetooth Audio Gateway
+    "bthserv"        # Bluetooth Support Service
+)
+
+foreach ($svc in $services) {
+    Stop-Service -Name $svc -Force -ErrorAction SilentlyContinue
+    Set-Service  -Name $svc -StartupType Disabled -ErrorAction SilentlyContinue
+    Write-Host "Disabled: $svc"
+}
+```
+
+To re-enable any of these later:
+```powershell
+Set-Service -Name "WSearch" -StartupType Automatic
+Start-Service "WSearch"
+```
+
+### Why SysMain matters most
+
+`SysMain` (Superfetch) actively pre-fills RAM with predicted app data. When Whisper
+loads a model into GPU/CPU memory, SysMain competes for the same RAM budget and
+triggers the Memory Compression balloon. Disabling it frees several hundred MB
+immediately and eliminates background page-file churn during inference.
+
+### WSL2 Memory Note
+
+`vmmemWSL` at 9.6 GB is the Hyper-V VM backing WSL2 — Docker and Minikube live
+inside it. This is expected and should stay large. If Windows starts paging heavily,
+a `.wslconfig` can cap it:
+
+```ini
+# C:\Users\<you>\.wslconfig
+[wsl2]
+memory=12GB      # hard cap on vmmemWSL
+processors=10    # leave cores for Windows + Whisper
+swap=4GB
+```
+
+Hold off on setting this until there's an actual OOM symptom — Docker/Minikube
+benefit from the full allocation when running CSO workloads.
