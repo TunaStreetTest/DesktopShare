@@ -11,16 +11,19 @@
 | eliasn97          | @EliasN97           |
 | hello_kiko        | @hello_kiko         |
 | TheBurntPeanut    | @theburntpeanut     |
-| Reginald          | N/A  				  |
 | jasontheween      | @jasontheween       |
 | zackrawrr         | @zackrawrr          |
 | Lacy              | @LacyHimself        |
+| Kai Cenat         | @KaiCenat           |
 
 ### Kick Streamers
 
 | Streamer       | X Username              |
 |----------------|-------------------------|
-| DGDecor        | N/A  				   |
+| chickenandy    | @ChickenAndy_           |
+| Asmongold      | @asmongold              |
+| MrBeast        | @mrbeast                |
+| Clavicular     | @Clavicular0            |
 | Roshtein       | @roshtein               |
 | DeenTheGreat   | @DeenTheGreat           |
 | HSTikkyTokky   | @HSTikkyTokky           |
