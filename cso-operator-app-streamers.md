@@ -106,7 +106,7 @@ cd ~/cso-operator-app
 make deploy MODULES=rag,streamers
 ```
 
-App is permanently at **http://127.0.0.1:8000** via `minikube tunnel` (LoadBalancer service).
+App is permanently at **http://127.0.0.1:8090** via `minikube tunnel` (LoadBalancer service).
 `minikube tunnel` must be running — it's the first step in the terminal setup and also auto-opens Chromium.
 
 After any deploy that resets the pod, re-inject credentials:
@@ -212,7 +212,7 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 | X API 402 "no credits" | Pay-per-use billing — add credits at developer.x.com |
 | HuggingFace pipeline has no `beam_size` param | Use `num_beams` or omit — default is already greedy |
 | `asyncio.Semaphore` + `run_in_executor` in Whisper | Broke server startup — HTTP queuing at NiFi layer is sufficient |
-| NiFi InvokeHTTP URL to app | Use `http://cso-operator-app.default.svc.cluster.local:8000/api/...` — NodePort 30080 is external only and will timeout |
+| NiFi InvokeHTTP URL to app | Use `http://cso-operator-app.default.svc.cluster.local:8090/api/...` — NodePort 30080 is external only and will timeout |
 | Kick public API `/clips` endpoint | Returns 404 — use `kick.com/api/v2/clips?channel=<slug>` with browser `User-Agent` + `Referer: https://kick.com/` headers |
 | Kick HLS clips need ffmpeg remux | `clip_url` is `.m3u8` — download with `ffmpeg -c copy -movflags +faststart`; do NOT re-encode with libx264 (too slow) |
 | Whisper can't read MP4 directly | Whisper server saves uploads as `.wav`; soundfile fails on MP4 content — extract 16kHz mono WAV with ffmpeg before uploading |
@@ -328,7 +328,7 @@ EvaluateJsonPath
 
 InvokeHTTP  [GET WAV]
   HTTP Method:  GET
-  Remote URL:   http://cso-operator-app.default.svc.cluster.local:8000/api/streamers/wav/${clip_id}
+  Remote URL:   http://cso-operator-app.default.svc.cluster.local:8090/api/streamers/wav/${clip_id}
   Read Timeout: 90 secs
   Connection Timeout: 10 secs
   → Response relationship only (route Failure/No Retry to error log)
@@ -455,7 +455,7 @@ for wav in glob.glob(str(storage / "*.wav")):
 ### Rollout Steps
 
 1. Add `GET /wav/{clip_id}` endpoint — deploy app
-2. Test endpoint manually: `curl http://localhost:8000/api/streamers/wav/<clip_id> -o test.wav`
+2. Test endpoint manually: `curl http://localhost:8090/api/streamers/wav/<clip_id> -o test.wav`
 3. Update `clip_queue()` to compute caption from `raw_caption` — deploy app
 4. Update `setup-streamers-flows.py` to build new 12-processor ProcessClips PG
 5. Stop current ProcessClips PG in NiFi UI
@@ -477,6 +477,14 @@ for wav in glob.glob(str(storage / "*.wav")):
 ---
 
 ## Session History
+
+### Session 11 (2026-07-01)
+
+| Change | Details |
+|---|---|
+| Service port 8000 → 8090 | `k8s/service.yaml` LoadBalancer `port` changed from `8000` to `8090` (`targetPort` stays `8000` — only the Service-facing port moved). App tunnel URL is now `http://127.0.0.1:8090`, and the cluster-internal DNS address used by NiFi's InvokeHTTP processors is now `cso-operator-app.default.svc.cluster.local:8090` |
+| **Gotcha:** publish timed out after the port move | The service.yaml port change had already been applied live once before (repo file had drifted, just committed to match), but the NiFi ProcessClips/PublishClip flows still pointed InvokeHTTP at the old `:8000` internal address — so calls from NiFi to the app (WAV fetch, publish-next) failed/timed out until the flow's Remote URL was updated to `:8090` to match the Service's new port |
+| Twitch top-mode clip pagination fix | `_get_clips` only fetched a single page (`first=20`, no cursor) even in top_mode, so "top clips" really meant "highest-viewed among the ~20 most recent" — Helix returns clips in recency order, not by views. Now pages up to 5×100 when `top_mode=True` before ranking by `view_count` |
 
 ### Session 10 (2026-07-01)
 
@@ -569,7 +577,7 @@ for wav in glob.glob(str(storage / "*.wav")):
 | Caption label fix | System message tells vLLM output-only; `_clean_caption()` strips `**Label:**` prefix and surrounding quotes as fallback |
 | All polls slowed + visibility pause | HealthBar 30s→60s, Operators 15s→60s, PodSummary 5s→30s, NifiControls 4s→30s. All now pause when browser tab is hidden |
 | HealthBar operators call removed | HealthBar was calling `k8sOperators()` every tick on every tab just for the Flink dot — removed. Operators component (Operator tab only) already covers it |
-| NiFi URL for internal calls | Always `http://cso-operator-app.default.svc.cluster.local:8000/api/...` — not NodePort 30080 |
+| NiFi URL for internal calls | Always `http://cso-operator-app.default.svc.cluster.local:8090/api/...` — not NodePort 30080 |
 
 ### Session 8 (2026-06-30)
 
