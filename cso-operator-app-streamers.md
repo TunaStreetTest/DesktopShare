@@ -478,6 +478,23 @@ for wav in glob.glob(str(storage / "*.wav")):
 
 ## Session History
 
+### Session 9 (2026-06-30)
+
+| Change | Details |
+|---|---|
+| ExtraEmily handle typo fixed | `_STREAMER_CATALOG["extraemily"]` and `streamers.md` corrected `@ExtraEmily` → `@ExtraEmilyy` |
+| Clip cap scales with watch list size | 1 streamer → 5 clips/run, 2 → 3, 3+ → unchanged at 2. Added `_clips_per_streamer_cap()` |
+| Tab order changed | Streamers, RAG, Operator (was Operator, EFM, RAG, Streamers). First tab is now the default landing view |
+| Pending Publish panel added | New `GET /api/streamers/pending` + `POST /api/streamers/pending/{clip_id}/cancel`; frontend card shows the X-publish queue with per-clip cancel |
+| Platform logo overlay on clips | Burns a bar with the Kick/Twitch logo + `PLATFORM.COM/HANDLE` above each fetched clip. Rejected a frontend-only badge (looked wrong, made videos look "weird") and a compositing overlay (covered footage) in favor of extending the canvas via ffmpeg `pad` — original footage is fully preserved below the bar, output is simply taller (1080p → 1240p) |
+| Logo assets | User-supplied Kick/Twitch logo images pre-cropped + colorkeyed to transparent PNGs at `backend/assets/logos/{kick,twitch}.png`; `DejaVuSans-Bold.ttf` bundled at `backend/assets/fonts/` for the handle text (avoids relying on fonts being present in the slim Python image) |
+| **Gotcha:** `scale2ref` silently breaks tiny images | Used to scale the logo relative to the main video's height; collapsed the 151x51 Twitch logo down to ~9x5px instead of scaling up, making it invisible. Fixed by `ffprobe`-ing the clip's real dimensions up front and computing all overlay sizes as literal pixel values instead |
+| **Gotcha:** `ultrafast` preset bloats files 5-7x | First batch used `-preset ultrafast -tune zerolatency -bf 0` to minimize ffmpeg memory/CPU (see below) — but that setting produces much bigger output for the same CRF. Clips went from ~50-100MB to 130-230MB, which is almost certainly why NiFi's `PublishClip` InvokeHTTP started timing out on the X upload. Switched to `-preset veryfast` with B-frames re-enabled — files came back down near original size (~44-63MB) at the cost of ~2-3x slower encode (45s → ~90-120s/clip) |
+| **Gotcha:** in-memory semaphore doesn't protect across processes | First serialized ffmpeg overlay burns with a `threading.Semaphore(1)` — this only guards one Python process. A standalone reprocessing script (its own process) ran concurrently with the live app's own fetch pipeline, and two ffmpeg encodes at once pegged the pod's 1 CPU / 1Gi limits and nearly OOM-killed it. Replaced with an `fcntl.flock` on a shared `/tmp` lock file, which correctly serializes across every process in the pod |
+| **Gotcha:** NiFi client timeout ≠ backend failure | `PublishClip`'s InvokeHTTP gave up waiting on a slow (bloated-file) upload and reported "timeout" to the user, but the FastAPI backend kept running server-side and completed the tweepy upload successfully anyway — confirmed via `.published.json`. Don't assume a NiFi-reported timeout means the underlying action failed; check backend state first |
+| Recovered already-bloated pending clips | Since `pad` never touches pixels below the bar, wrote a one-off script to crop the old bar off + re-apply the new (smaller) overlay in one pass for clips already bloated by the `ultrafast` run, instead of re-fetching from Kick/Twitch. Stopped partway through at user's direction — accepted that already-queued bloated clips still publish successfully (just slowly), and only bothered fixing ones not yet in flight |
+| Resumable batch pattern | Reprocessing scripts persist per-clip status to a JSON state file in `/clips/`, so a killed/interrupted run resumes without redoing finished clips or double-stamping |
+
 ### Session 2 (2026-06-28)
 
 | Feature | Details |
