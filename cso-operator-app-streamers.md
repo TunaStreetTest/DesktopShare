@@ -212,7 +212,7 @@ pipe(tmp_path, chunk_length_s=60, batch_size=24, return_timestamps=True)
 | X API 402 "no credits" | Pay-per-use billing — add credits at developer.x.com |
 | HuggingFace pipeline has no `beam_size` param | Use `num_beams` or omit — default is already greedy |
 | `asyncio.Semaphore` + `run_in_executor` in Whisper | Broke server startup — HTTP queuing at NiFi layer is sufficient |
-| NiFi InvokeHTTP URL to app | Use `http://cso-operator-app.default.svc.cluster.local:8090/api/...` — NodePort 30080 is external only and will timeout |
+| NiFi InvokeHTTP URL to app | Use `http://cso-operator-app.default.svc.cluster.local:8090/api/...` — NodePort 30090 is external only and will timeout |
 | Kick public API `/clips` endpoint | Returns 404 — use `kick.com/api/v2/clips?channel=<slug>` with browser `User-Agent` + `Referer: https://kick.com/` headers |
 | Kick HLS clips need ffmpeg remux | `clip_url` is `.m3u8` — download with `ffmpeg -c copy -movflags +faststart`; do NOT re-encode with libx264 (too slow) |
 | Whisper can't read MP4 directly | Whisper server saves uploads as `.wav`; soundfile fails on MP4 content — extract 16kHz mono WAV with ffmpeg before uploading |
@@ -578,7 +578,7 @@ for wav in glob.glob(str(storage / "*.wav")):
 | Caption label fix | System message tells vLLM output-only; `_clean_caption()` strips `**Label:**` prefix and surrounding quotes as fallback |
 | All polls slowed + visibility pause | HealthBar 30s→60s, Operators 15s→60s, PodSummary 5s→30s, NifiControls 4s→30s. All now pause when browser tab is hidden |
 | HealthBar operators call removed | HealthBar was calling `k8sOperators()` every tick on every tab just for the Flink dot — removed. Operators component (Operator tab only) already covers it |
-| NiFi URL for internal calls | Always `http://cso-operator-app.default.svc.cluster.local:8090/api/...` — not NodePort 30080 |
+| NiFi URL for internal calls | Always `http://cso-operator-app.default.svc.cluster.local:8090/api/...` — not NodePort 30090 |
 
 ### Session 8 (2026-06-30)
 
