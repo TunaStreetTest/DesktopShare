@@ -15,6 +15,7 @@
 | zackrawrr         | @zackrawrr          |
 | Lacy              | @LacyHimself        |
 | Kai Cenat         | @KaiCenat           |
+| 2xrakai           | @2xrakai            |
 
 ### Kick Streamers
 
